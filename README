@@ -1,6 +1,6 @@
 Build MBTiles files from a Mapnik stylesheet, given a list of bounding boxes and zoom levels.
 
-https://github.com/makinacorpus/landez
+It uses `mbutil` from Mapbox https://github.com/mapbox/mbutil
 
 
 =======
