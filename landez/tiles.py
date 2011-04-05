@@ -151,6 +151,9 @@ class MBTilesBuilder(object):
         logger.debug("Clean-up %s" % self.tmp_dir)
         try:
             shutil.rmtree(self.tmp_dir)
+        except OSError:
+            pass
+        try:
             if full:
                 logger.debug("Delete %s" % self.filepath)
                 os.remove(self.filepath)

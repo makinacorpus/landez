@@ -39,6 +39,17 @@ class TestMBTilesBuilder(unittest.TestCase):
         self.assertTrue(os.path.exists(mb.tmp_dir))
         mb.clean()
         self.assertFalse(os.path.exists(mb.tmp_dir))
+        # Missing file
+        self.assertEqual(mb.filepath, '/tmp/tiles.mbtiles')
+        self.assertFalse(os.path.exists(mb.filepath))
+        mb.clean()
+        # Empty file
+        open(mb.filepath, 'w').close() 
+        self.assertTrue(os.path.exists(mb.filepath))
+        mb.clean()
+        self.assertTrue(os.path.exists(mb.filepath))
+        mb.clean(full=True)
+        self.assertFalse(os.path.exists(mb.filepath))
 
 
 if __name__ == '__main__':
