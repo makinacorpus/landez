@@ -1,0 +1,16 @@
+Build MBTiles files from a Mapnik stylesheet, given a list of bounding boxes and zoom levels.
+
+https://github.com/makinacorpus/landez
+
+
+=======
+AUTHORS
+=======
+
+    * Mathieu Leplatre <mathieu.leplatre@makina-corpus.com>
+
+=======
+LICENSE
+=======
+
+    * Lesser GNU Public License
