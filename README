@@ -1,4 +1,4 @@
-Build MBTiles files from a Mapnik stylesheet, given a list of bounding boxes and zoom levels.
+`Landez` builds MBTiles files from a Mapnik stylesheet, given a list of bounding boxes and zoom levels.
 
 It uses `mbutil` from Mapbox https://github.com/mapbox/mbutil
 
