@@ -3,6 +3,20 @@
 It uses `mbutil` from Mapbox https://github.com/mapbox/mbutil
 
 
+=====
+USAGE
+=====
+
+::
+
+    from landez import MBTilesBuilder
+    
+    mb = MBTilesBuilder(stylefile="yourstyle.xml", filepath="dest.mbtiles")
+    mb.add_coverage(bbox=(-90.0, -180.0, 180.0, 90.0), 
+                    zoomlevels=[0, 1])
+    mb.run()
+
+
 =======
 AUTHORS
 =======
