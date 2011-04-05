@@ -118,14 +118,20 @@ class MBTilesBuilder(object):
                     l.append((z, x, y))
         return l
 
-    def run(self):
+    def run(self, force=False):
         """
         Build a MBTile file, only if it does not exist.
         """
         if os.path.exists(self.filepath):
-            # Already built, do not do anything.
-            logger.info("%s already exists. Do not build it." % self.filepath)
-            return 
+            if force:
+                logger.warn("%s already exists. Overwrite." % self.filepath)
+            else:
+                # Already built, do not do anything.
+                logger.info("%s already exists. Nothing to do." % self.filepath)
+                return
+        
+        # Clean previous runs
+        self.clean(full=force)
         
         # Compute list of tiles
         tilelist = []
