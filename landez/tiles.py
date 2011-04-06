@@ -36,9 +36,9 @@ class GoogleProjection(object):
         self.Cc = []
         self.zc = []
         self.Ac = []
-        self.maxlevel = max(levels)
+        self.maxlevel = max(levels) + 1
         c = tilesize
-        for d in levels:
+        for d in range(self.maxlevel):
             e = c/2;
             self.Bc.append(c/360.0)
             self.Cc.append(c/(2 * pi))
@@ -84,12 +84,11 @@ class MBTilesBuilder(object):
         # Number of tiles rendered here
         self.rendered = 0
 
-    def add_coverage(bbox, zoomlevels):
+    def add_coverage(self, bbox, zoomlevels):
         """
         Add a coverage
         """
         self._bboxes.append((bbox, zoomlevels))
-        self.zoomlevels = sorted(set(self.zoomlevels + zoomlevels))
 
     def tileslist(self, bbox, zoomlevels):
         """
@@ -134,15 +133,16 @@ class MBTilesBuilder(object):
         self.clean(full=force)
         
         # Compute list of tiles
-        tilelist = []
+        tileslist = []
         for bbox, levels in self._bboxes:
-            tilelist.extend(self.tilelist(bbox, levels))
-        logger.debug("%s tiles to be packaged." % len(tilelist))
+            logger.debug("Compute list of tiles for bbox %s on zooms %s." % (bbox, levels))
+            tileslist.extend(self.tileslist(bbox, levels))
+        logger.debug("%s tiles to be packaged." % len(tileslist))
 
         # Go through whole list of tiles and gather them in tmp_dir
         self.rendered = 0
-        for tile in tilelist:
-            self.prepare_tile(tile)
+        for (z, x, y) in tileslist:
+            self.prepare_tile((z, x, y))
         logger.debug("%s tiles rendered." % self.rendered)
 
         # Package it! 
@@ -166,13 +166,11 @@ class MBTilesBuilder(object):
         except OSError:
             pass
 
-    def prepare_tile(self, tile):
+    def prepare_tile(self, (z, x, y)):
         """
         Check already rendered tiles in `tiles_dir`, and copy them in the
         same temporary directory.
         """
-        x, y, z = tile
-
         tile_dir = os.path.join("%s" % z, "%s" % x)
         tile_name = "%s.png" % y
         tile_abs_dir = os.path.join(self.tiles_dir, tile_dir)
@@ -183,7 +181,7 @@ class MBTilesBuilder(object):
             if not os.path.isdir(tile_abs_dir):
                 os.makedirs(tile_abs_dir)
             logger.debug("Render tile %s" % os.path.join(tile_dir, tile_name))
-            self.render_tile(tile_abs_uri, x, y, z)
+            self.render_tile(tile_abs_uri, z, x, y)
             self.rendered += 1
         
         # Copy to temporary dir
@@ -192,7 +190,7 @@ class MBTilesBuilder(object):
             os.makedirs(tmp_dir)
         shutil.copy(tile_abs_uri, tmp_dir)
 
-    def render_tile(self, tile_uri, x, y, z):
+    def render_tile(self, tile_uri, z, x, y):
         """
         Render the specified tile with Mapnik
         """
@@ -208,8 +206,8 @@ class MBTilesBuilder(object):
         p1 = ((x + 1) * self.tile_size, y * self.tile_size)
 
         # Convert to LatLong (EPSG:4326)
-        l0 = self._tileprj.fromPixelToLL(p0, z);
-        l1 = self._tileprj.fromPixelToLL(p1, z);
+        l0 = self.proj.fromPixelToLL(p0, z);
+        l1 = self.proj.fromPixelToLL(p1, z);
 
         # Convert to map projection
         c0 = self._prj.forward(mapnik.Coord(l0[0],l0[1]))
