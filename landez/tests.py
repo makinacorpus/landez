@@ -8,9 +8,9 @@ class TestMBTilesBuilder(unittest.TestCase):
     def test_path(self):
         mb = MBTilesBuilder(None)
         self.assertEqual(mb.basename, 'tiles')
-        self.assertEqual(mb.filepath, '/tmp/tiles.mbtiles')
+        self.assertEqual(mb.filepath, os.path.join(os.getcwd(), 'tiles.mbtiles'))
         self.assertEqual(mb.tmp_dir, '/tmp/tiles')
-        self.assertEqual(mb.tiles_dir, os.getcwd())
+        self.assertEqual(mb.tiles_dir, '/tmp')
 
         mb = MBTilesBuilder('/foo/bar', filepath='/foo/bar/toto.mb')
         self.assertEqual(mb.basename, 'toto')
@@ -40,7 +40,7 @@ class TestMBTilesBuilder(unittest.TestCase):
         mb.clean()
         self.assertFalse(os.path.exists(mb.tmp_dir))
         # Missing file
-        self.assertEqual(mb.filepath, '/tmp/tiles.mbtiles')
+        self.assertEqual(mb.filepath, os.path.join(os.getcwd(), 'tiles.mbtiles'))
         self.assertFalse(os.path.exists(mb.filepath))
         mb.clean()
         # Empty file

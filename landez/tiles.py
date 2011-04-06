@@ -9,9 +9,9 @@ import mapnik
 
 
 DEFAULT_TILE_SIZE = 256
-DEFAULT_TILES_DIR = os.getcwd()
 DEFAULT_TMP_DIR = tempfile.gettempdir()
-DEFAULT_FILEPATH = os.path.join(DEFAULT_TMP_DIR, "tiles.mbtiles")
+DEFAULT_TILES_DIR = DEFAULT_TMP_DIR
+DEFAULT_FILEPATH = os.path.join(os.getcwd(), "tiles.mbtiles")
 
 DEG_TO_RAD = pi/180
 RAD_TO_DEG = 180/pi
