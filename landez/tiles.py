@@ -95,7 +95,7 @@ class MBTilesBuilder(object):
         Build the tiles list within the bbox (minx, miny, maxx, maxy) at the specified zoom levels.
         Return a list of tuples (z,x,y)
         """
-        if max(zoomlevels) > self.proj.maxlevel:
+        if max(zoomlevels) >= self.proj.maxlevel:
             self.proj = GoogleProjection(self.tile_size, zoomlevels)
         
         ll0 = (bbox[0],bbox[3])
