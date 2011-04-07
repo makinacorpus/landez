@@ -1,15 +1,47 @@
-`Landez` builds MBTiles files from a Mapnik stylesheet, given a list of bounding boxes and zoom levels.
+*Landez* builds MBTiles files either from a remote tile service URL or from a local Mapnik stylesheet.
 
-It uses `mbutil` from Mapbox https://github.com/mapbox/mbutil
+The land covered is specified using a list of bounding boxes and zoom levels.
 
+It uses *mbutil* from Mapbox https://github.com/mapbox/mbutil at the final stage to 
+build the MBTiles file.
+
+
+=======
+INSTALL
+=======
+
+*Landez* requires nothing but python remote mode (specifying a tiles URL), but 
+requires `mapnik` if the tiles are drawn locally.
+
+::
+    easy_install sqlite3
+
+    sudo aptitude install python-mapnik
 
 =====
 USAGE
 =====
 
+Using a remote tile service (Cloudmade by default):
 ::
 
+    import logging
     from landez import MBTilesBuilder
+
+    logging.basicConfig(level=logging.DEBUG)
+        
+    mb = MBTilesBuilder(remote=True)
+    mb.add_coverage(bbox=(-90.0, -180.0, 180.0, 90.0), 
+                        zoomlevels=[0, 1])
+    mb.run()
+
+Using mapnik to render tiles:
+::
+
+    import logging
+    from landez import MBTilesBuilder
+    
+    logging.basicConfig(level=logging.DEBUG)
     
     mb = MBTilesBuilder(stylefile="yourstyle.xml", filepath="dest.mbtiles")
     mb.add_coverage(bbox=(-90.0, -180.0, 180.0, 90.0), 
@@ -22,6 +54,7 @@ AUTHORS
 =======
 
     * Mathieu Leplatre <mathieu.leplatre@makina-corpus.com>
+    * Thanks to mbutil authors <https://github.com/mapbox/mbutil>
 
 =======
 LICENSE

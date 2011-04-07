@@ -1,17 +1,31 @@
 import os
+import urllib
 import shutil
 from math import pi, cos, sin, log, exp, atan
 import logging
 import tempfile
 
 from mbutil import disk_to_mbtiles
-import mapnik
+
+has_mapnik = False
+try:
+    import mapnik
+    has_mapnik = True
+except ImportError:
+    pass
 
 
-DEFAULT_TILE_SIZE = 256
+""" Default tiles URL """
+DEFAULT_TILES_URL = "http://tile.cloudmade.com/f1fe9c2761a15118800b210c0eda823c/1/{size}/{z}/{x}/{y}.png"  # Register key
+""" Base temporary folder for building MBTiles files """
 DEFAULT_TMP_DIR = tempfile.gettempdir()
+""" Base folder for sharing tiles between different runs """
 DEFAULT_TILES_DIR = DEFAULT_TMP_DIR
+""" Default output MBTiles file """
 DEFAULT_FILEPATH = os.path.join(os.getcwd(), "tiles.mbtiles")
+""" Default tile size in pixels (*useless* in remote rendering) """
+DEFAULT_TILE_SIZE = 256
+
 
 DEG_TO_RAD = pi/180
 RAD_TO_DEG = 180/pi
@@ -65,14 +79,22 @@ class MBTilesBuilder(object):
     """
     Build a MBTiles file from a Mapnik stylesheet file.
     """
-    def __init__(self, stylefile, **kwargs):
-        self.stylefile = stylefile
+    def __init__(self, **kwargs):
+        self.remote = kwargs.get('remote', True)
+        self.stylefile = kwargs.get('stylefile')
+        if not self.remote:
+            assert has_mapnik, "Cannot render tiles without mapnik !"
+            assert self.stylefile, "A mapnik stylesheet is required"
         
         self.filepath = kwargs.get('filepath', DEFAULT_FILEPATH)
         self.basename, ext = os.path.splitext(os.path.basename(self.filepath))
         
         self.tmp_dir = kwargs.get('tmp_dir', DEFAULT_TMP_DIR)
         self.tmp_dir = os.path.join(self.tmp_dir, self.basename)
+        
+        
+        
+        self.tiles_url = kwargs.get('tiles_url', DEFAULT_TILES_URL)
         self.tiles_dir = kwargs.get('tiles_dir', DEFAULT_TILES_DIR)
         self.tile_size = kwargs.get('tile_size', DEFAULT_TILE_SIZE)
         
@@ -81,7 +103,7 @@ class MBTilesBuilder(object):
         self._mapnik = None
         self._prj = None
 
-        # Number of tiles rendered here
+        # Number of tiles rendered/downloaded here
         self.rendered = 0
 
     def add_coverage(self, bbox, zoomlevels):
@@ -143,7 +165,7 @@ class MBTilesBuilder(object):
         self.rendered = 0
         for (z, x, y) in tileslist:
             self.prepare_tile((z, x, y))
-        logger.debug("%s tiles rendered." % self.rendered)
+        logger.debug("%s tiles were missing." % self.rendered)
 
         # Package it! 
         logger.info("Build MBTiles file '%s'." % self.filepath)
@@ -177,11 +199,17 @@ class MBTilesBuilder(object):
         tile_abs_uri = os.path.join(tile_abs_dir, tile_name)
         
         # Render missing tiles !
-        if not os.path.exists(tile_abs_uri):
+        if os.path.exists(tile_abs_uri):
+            logger.debug("Found %s" % tile_abs_uri)
+        else:
             if not os.path.isdir(tile_abs_dir):
                 os.makedirs(tile_abs_dir)
-            logger.debug("Render tile %s" % os.path.join(tile_dir, tile_name))
-            self.render_tile(tile_abs_uri, z, x, y)
+            if self.remote:
+                logger.debug("Download tile %s" % os.path.join(tile_dir, tile_name))
+                self.download_tile(tile_abs_uri, z, x, y)
+            else:
+                logger.debug("Render tile %s" % os.path.join(tile_dir, tile_name))
+                self.render_tile(tile_abs_uri, z, x, y)
             self.rendered += 1
         
         # Copy to temporary dir
@@ -190,7 +218,18 @@ class MBTilesBuilder(object):
             os.makedirs(tmp_dir)
         shutil.copy(tile_abs_uri, tmp_dir)
 
-    def render_tile(self, tile_uri, z, x, y):
+    def download_tile(self, output, z, x, y):
+        """
+        Download the specified tile from `tiles_url`
+        """
+        url = self.tiles_url.replace("{size}", "%s" % self.tile_size)
+        url = url.replace("{z}", "%s" % z)
+        url = url.replace("{x}", "%s" % x)  # XXX: ugly: use regex !
+        url = url.replace("{y}", "%s" % y)
+        image = urllib.URLopener()
+        image.retrieve(url, output)
+
+    def render_tile(self, output, z, x, y):
         """
         Render the specified tile with Mapnik
         """
@@ -226,4 +265,4 @@ class MBTilesBuilder(object):
         # Render image with default Agg renderer
         im = mapnik.Image(self.tile_size, self.tile_size)
         mapnik.render(self._mapnik, im)
-        im.save(tile_uri, 'png256')
+        im.save(output, 'png256')
