@@ -22,6 +22,8 @@ requires `mapnik` if the tiles are drawn locally.
 USAGE
 =====
 
+Remote tiles
+============
 Using a remote tile service (Cloudmade by default):
 ::
 
@@ -35,6 +37,10 @@ Using a remote tile service (Cloudmade by default):
                         zoomlevels=[0, 1])
     mb.run()
 
+Please respect `Tile usage policies <http://wiki.openstreetmap.org/wiki/Tile_usage_policy>`
+
+Local rendering
+===============
 Using mapnik to render tiles:
 ::
 
