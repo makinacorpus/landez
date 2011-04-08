@@ -242,12 +242,11 @@ class MBTilesBuilder(object):
             try:
                 image = urllib.URLopener()
                 image.retrieve(url, output)
-                break
+                return  # Done.
             except IOError, e:
                 logger.debug("Download error, retry (%s left). (%s)" % (r, e))
                 r -= 1
-        if r == 0:
-            raise DownloadError
+        raise DownloadError
 
     def render_tile(self, output, z, x, y):
         """
