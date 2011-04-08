@@ -1,4 +1,5 @@
 import os
+import re
 import urllib
 import shutil
 from math import pi, cos, sin, log, exp, atan
@@ -16,7 +17,7 @@ except ImportError:
 
 
 """ Default tiles URL """
-DEFAULT_TILES_URL = "http://tile.cloudmade.com/f1fe9c2761a15118800b210c0eda823c/1/{size}/{z}/{x}/{y}.png"  # Register key
+DEFAULT_TILES_URL = "http://tile.cloudmade.com/f1fe9c2761a15118800b210c0eda823c/1/{size}/{z}/{x}/{y}.png"  # Register
 """ Base temporary folder for building MBTiles files """
 DEFAULT_TMP_DIR = tempfile.gettempdir()
 """ Base folder for sharing tiles between different runs """
@@ -25,7 +26,8 @@ DEFAULT_TILES_DIR = DEFAULT_TMP_DIR
 DEFAULT_FILEPATH = os.path.join(os.getcwd(), "tiles.mbtiles")
 """ Default tile size in pixels (*useless* in remote rendering) """
 DEFAULT_TILE_SIZE = 256
-
+""" Number of retries for remove tiles downloading """
+DOWNLOAD_RETRIES = 3
 
 DEG_TO_RAD = pi/180
 RAD_TO_DEG = 180/pi
@@ -39,6 +41,10 @@ def minmax (a,b,c):
     a = min(a,c)
     return a
 
+
+class DownloadError(Exception):
+    """ Raised when download at tiles URL fails DOWNLOAD_RETRIES times """
+    pass
 
 class GoogleProjection(object):
     """
@@ -218,16 +224,30 @@ class MBTilesBuilder(object):
             os.makedirs(tmp_dir)
         shutil.copy(tile_abs_uri, tmp_dir)
 
-    def download_tile(self, output, z, x, y):
+    def download_tile(self, output, z_, x_, y_):
         """
         Download the specified tile from `tiles_url`
         """
-        url = self.tiles_url.replace("{size}", "%s" % self.tile_size)
-        url = url.replace("{z}", "%s" % z)
-        url = url.replace("{x}", "%s" % x)  # XXX: ugly: use regex !
-        url = url.replace("{y}", "%s" % y)
-        image = urllib.URLopener()
-        image.retrieve(url, output)
+        # Resolve keywords in `tiles_url`
+        def resolve(keyword):
+            size, z, x, y = self.tile_size, z_, x_, y_  # locals()...
+            keyword = keyword.group(1)
+            return "%s" % locals().get(keyword)
+        p = re.compile('{( [^}]* )}', re.VERBOSE+re.DOTALL)
+        url  = p.sub(resolve, self.tiles_url)
+        
+        logger.debug("Retrieve tile URL is %s" % url)
+        r = DOWNLOAD_RETRIES
+        while r > 0:
+            try:
+                image = urllib.URLopener()
+                image.retrieve(url, output)
+                break
+            except IOError, e:
+                logger.debug("Download error, retry (%s left). (%s)" % (r, e))
+                r -= 1
+        if r == 0:
+            raise DownloadError
 
     def render_tile(self, output, z, x, y):
         """
