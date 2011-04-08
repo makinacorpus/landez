@@ -6,18 +6,18 @@ from tiles import MBTilesBuilder
 
 class TestMBTilesBuilder(unittest.TestCase):
     def test_path(self):
-        mb = MBTilesBuilder(None)
+        mb = MBTilesBuilder()
         self.assertEqual(mb.basename, 'tiles')
         self.assertEqual(mb.filepath, os.path.join(os.getcwd(), 'tiles.mbtiles'))
         self.assertEqual(mb.tmp_dir, '/tmp/tiles')
         self.assertEqual(mb.tiles_dir, '/tmp')
 
-        mb = MBTilesBuilder('/foo/bar', filepath='/foo/bar/toto.mb')
+        mb = MBTilesBuilder(filepath='/foo/bar/toto.mb')
         self.assertEqual(mb.basename, 'toto')
         self.assertEqual(mb.tmp_dir, '/tmp/toto')
 
     def test_tileslist(self):
-        mb = MBTilesBuilder(None)
+        mb = MBTilesBuilder()
         
         # World at level 0
         l = mb.tileslist((-90.0, -180.0, 180.0, 90.0), [0])
@@ -29,7 +29,7 @@ class TestMBTilesBuilder(unittest.TestCase):
                              (1, 0, 0), (1, 0, 1), (1, 1, 0), (1, 1, 1)])
 
     def test_clean(self):
-        mb = MBTilesBuilder(None)
+        mb = MBTilesBuilder()
         self.assertEqual(mb.tmp_dir, '/tmp/tiles')
         # Missing dir
         self.assertFalse(os.path.exists(mb.tmp_dir))
