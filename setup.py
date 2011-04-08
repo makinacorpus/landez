@@ -20,7 +20,6 @@ setup(name       = 'landez',
         console_scripts = [
         ]),
     install_requires=[
-        'mapnik',
     ],
     packages     = find_packages(),
     platforms    = ('any',),
