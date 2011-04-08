@@ -82,10 +82,20 @@ class GoogleProjection(object):
 
 
 class MBTilesBuilder(object):
-    """
-    Build a MBTiles file from a Mapnik stylesheet file.
-    """
     def __init__(self, **kwargs):
+        """
+        A MBTiles builder, either from remote tiles or local mapnik rendering.
+
+        Keyword arguments:
+        remote -- use remote tiles (default True)
+        stylefile -- mapnik stylesheet file, only necessary if `remote` is `False`
+        cache -- use a local cache to share tiles between runs (default True)
+        filepath -- output MBTiles file (default DEFAULT_FILEPATH)
+        tmp_dir -- temporary folder for gathering tiles (default DEFAULT_TMP_DIR)
+        tile_size -- default tile size (default DEFAULT_TILE_SIZE)
+        tiles_dir -- Local folder containing existing tiles, and 
+                     where cached tiles will be stored (default DEFAULT_TILES_DIR)
+        """
         self.remote = kwargs.get('remote', True)
         self.stylefile = kwargs.get('stylefile')
         if not self.remote:
@@ -98,10 +108,9 @@ class MBTilesBuilder(object):
         self.tmp_dir = kwargs.get('tmp_dir', DEFAULT_TMP_DIR)
         self.tmp_dir = os.path.join(self.tmp_dir, self.basename)
         
-        
-        
-        self.tiles_url = kwargs.get('tiles_url', DEFAULT_TILES_URL)
+        self.cache = kwargs.get('cache', True)
         self.tiles_dir = kwargs.get('tiles_dir', DEFAULT_TILES_DIR)
+        self.tiles_url = kwargs.get('tiles_url', DEFAULT_TILES_URL)
         self.tile_size = kwargs.get('tile_size', DEFAULT_TILE_SIZE)
         
         self.proj = GoogleProjection(self.tile_size)
@@ -201,28 +210,35 @@ class MBTilesBuilder(object):
         """
         tile_dir = os.path.join("%s" % z, "%s" % x)
         tile_name = "%s.png" % y
-        tile_abs_dir = os.path.join(self.tiles_dir, tile_dir)
-        tile_abs_uri = os.path.join(tile_abs_dir, tile_name)
+        tile_path = os.path.join(tile_dir, tile_name)
         
+        # Folder of tile is either cache or temporary
+        tmp_dir = os.path.join(self.tmp_dir, tile_dir)        
+        tile_abs_dir = tmp_dir
+        if self.cache:
+            tile_abs_dir = os.path.join(self.tiles_dir, tile_dir)
+        # Full path of tile
+        tile_abs_uri = os.path.join(tile_abs_dir, tile_name)
+
         # Render missing tiles !
-        if os.path.exists(tile_abs_uri):
+        if self.cache and os.path.exists(tile_abs_uri):
             logger.debug("Found %s" % tile_abs_uri)
         else:
             if not os.path.isdir(tile_abs_dir):
                 os.makedirs(tile_abs_dir)
             if self.remote:
-                logger.debug("Download tile %s" % os.path.join(tile_dir, tile_name))
+                logger.debug("Download tile %s" % tile_path)
                 self.download_tile(tile_abs_uri, z, x, y)
             else:
-                logger.debug("Render tile %s" % os.path.join(tile_dir, tile_name))
+                logger.debug("Render tile %s" % tile_path)
                 self.render_tile(tile_abs_uri, z, x, y)
             self.rendered += 1
-        
-        # Copy to temporary dir
-        tmp_dir = os.path.join(self.tmp_dir, tile_dir)
-        if not os.path.isdir(tmp_dir):
-            os.makedirs(tmp_dir)
-        shutil.copy(tile_abs_uri, tmp_dir)
+
+        # If taken or rendered in cache, copy it to temporary dir
+        if self.cache:
+            if not os.path.isdir(tmp_dir):
+                os.makedirs(tmp_dir)
+            shutil.copy(tile_abs_uri, tmp_dir)
 
     def download_tile(self, output, z_, x_, y_):
         """
@@ -236,7 +252,7 @@ class MBTilesBuilder(object):
         p = re.compile('{( [^}]* )}', re.VERBOSE+re.DOTALL)
         url  = p.sub(resolve, self.tiles_url)
         
-        logger.debug("Retrieve tile URL is %s" % url)
+        logger.debug("Retrieve tile at %s" % url)
         r = DOWNLOAD_RETRIES
         while r > 0:
             try:
