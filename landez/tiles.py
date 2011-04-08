@@ -5,6 +5,7 @@ import shutil
 from math import pi, cos, sin, log, exp, atan
 import logging
 import tempfile
+from multiprocessing import Pool
 
 from mbutil import disk_to_mbtiles
 
@@ -40,6 +41,11 @@ def minmax (a,b,c):
     a = max(a,b)
     a = min(a,c)
     return a
+
+def download(url, output):
+    image = urllib.URLopener()
+    image.retrieve(url, output)
+    logger.debug("Downloaded %s" % url)
 
 
 class DownloadError(Exception):
@@ -178,8 +184,11 @@ class MBTilesBuilder(object):
 
         # Go through whole list of tiles and gather them in tmp_dir
         self.rendered = 0
+        self.pool = Pool()
         for (z, x, y) in tileslist:
             self.prepare_tile((z, x, y))
+        self.pool.close()
+        self.pool.join()
         logger.debug("%s tiles were missing." % self.rendered)
 
         # Package it! 
@@ -251,13 +260,10 @@ class MBTilesBuilder(object):
             return "%s" % locals().get(keyword)
         p = re.compile('{( [^}]* )}', re.VERBOSE+re.DOTALL)
         url  = p.sub(resolve, self.tiles_url)
-        
-        logger.debug("Retrieve tile at %s" % url)
         r = DOWNLOAD_RETRIES
         while r > 0:
             try:
-                image = urllib.URLopener()
-                image.retrieve(url, output)
+                self.pool.apply_async(download, (url, output))
                 return  # Done.
             except IOError, e:
                 logger.debug("Download error, retry (%s left). (%s)" % (r, e))
