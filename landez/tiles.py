@@ -176,10 +176,10 @@ class MBTilesBuilder(object):
         self.clean(full=force)
         
         # Compute list of tiles
-        tileslist = []
+        tileslist = set()
         for bbox, levels in self._bboxes:
             logger.debug("Compute list of tiles for bbox %s on zooms %s." % (bbox, levels))
-            tileslist.extend(self.tileslist(bbox, levels))
+            tileslist = tileslist.union(self.tileslist(bbox, levels))
         logger.debug("%s tiles to be packaged." % len(tileslist))
 
         # Go through whole list of tiles and gather them in tmp_dir
@@ -249,17 +249,18 @@ class MBTilesBuilder(object):
                 os.makedirs(tmp_dir)
             shutil.copy(tile_abs_uri, tmp_dir)
 
-    def download_tile(self, output, z_, x_, y_):
+    def download_tile(self, output, z, x, y):
         """
         Download the specified tile from `tiles_url`
         """
-        # Resolve keywords in `tiles_url`
-        def resolve(keyword):
-            size, z, x, y = self.tile_size, z_, x_, y_  # locals()...
-            keyword = keyword.group(1)
-            return "%s" % locals().get(keyword)
-        p = re.compile('{( [^}]* )}', re.VERBOSE+re.DOTALL)
-        url  = p.sub(resolve, self.tiles_url)
+        # Render each keyword in URL ({x}, {y}, {z}, {size} ... )
+        size = self.tile_size
+        try:
+            url = self.tiles_url.format(**locals())
+        except KeyError, e:
+            raise DownloadError("Unknown keyword %s in URL" % e)
+        
+        logger.debug("Retrieve tile at %s" % url)
         r = DOWNLOAD_RETRIES
         while r > 0:
             try:
