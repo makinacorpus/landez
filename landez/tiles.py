@@ -170,10 +170,10 @@ class MBTilesBuilder(object):
         self.clean(full=force)
         
         # Compute list of tiles
-        tileslist = []
+        tileslist = set()
         for bbox, levels in self._bboxes:
             logger.debug("Compute list of tiles for bbox %s on zooms %s." % (bbox, levels))
-            tileslist.extend(self.tileslist(bbox, levels))
+            tileslist = tileslist.union(self.tileslist(bbox, levels))
         logger.debug("%s tiles to be packaged." % len(tileslist))
 
         # Go through whole list of tiles and gather them in tmp_dir
