@@ -92,6 +92,7 @@ class MBTilesBuilder(object):
         cache -- use a local cache to share tiles between runs (default True)
         filepath -- output MBTiles file (default DEFAULT_FILEPATH)
         tmp_dir -- temporary folder for gathering tiles (default DEFAULT_TMP_DIR)
+        tiles_url -- remote URL to download tiles (default DEFAULT_TILES_URL)
         tile_size -- default tile size (default DEFAULT_TILE_SIZE)
         tiles_dir -- Local folder containing existing tiles, and 
                      where cached tiles will be stored (default DEFAULT_TILES_DIR)
