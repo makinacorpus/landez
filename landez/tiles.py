@@ -121,6 +121,8 @@ class MBTilesBuilder(object):
 
         # Number of tiles rendered/downloaded here
         self.rendered = 0
+        # Number of tiles in total
+        self.nbtiles = 0
 
     def add_coverage(self, bbox, zoomlevels):
         """
@@ -175,7 +177,8 @@ class MBTilesBuilder(object):
         for bbox, levels in self._bboxes:
             logger.debug("Compute list of tiles for bbox %s on zooms %s." % (bbox, levels))
             tileslist = tileslist.union(self.tileslist(bbox, levels))
-        logger.debug("%s tiles to be packaged." % len(tileslist))
+        self.nbtiles = len(tileslist)
+        logger.debug("%s tiles to be packaged." % self.nbtiles)
 
         # Go through whole list of tiles and gather them in tmp_dir
         self.rendered = 0
