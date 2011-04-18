@@ -1,5 +1,6 @@
 #!/usr/bin/python
 # -*- coding: utf8 -*-
+import os 
 from setuptools import setup, find_packages
 
 here = os.path.abspath(os.path.dirname(__file__))
