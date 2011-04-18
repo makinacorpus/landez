@@ -11,10 +11,7 @@ INSTALL
 =======
 
 *Landez* requires nothing but python remote mode (specifying a tiles URL), but 
-requires `mapnik` if the tiles are drawn locally.
-
-::
-    easy_install sqlite3
+requires `mapnik` if the tiles are drawn locally. ::
 
     sudo aptitude install python-mapnik
 
