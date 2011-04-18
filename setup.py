@@ -2,19 +2,17 @@
 # -*- coding: utf8 -*-
 from setuptools import setup, find_packages
 
-f = open('README')
-readme = f.read()
-f.close()
+here = os.path.abspath(os.path.dirname(__file__))
 
 setup(name       = 'landez',
-    version      = '0.0',
+    version      = '1.0',
     license      = 'LGPL',
-    description  = 'Build a MBTiles file from a Mapnik stylesheet.',
+    description  = 'Build a MBTiles file from a tiles server or a Mapnik stylesheet.',
     author       = "Mathieu Leplatre",
     author_email = "mathieu.leplatre@makina-corpus.com",
     url          = "https://github.com/makinacorpus/landez/",
     download_url = "http://pypi.python.org/pypi/landez/",
-    long_description = readme,
+    long_description = open(os.path.join(here, 'README')).read(),,
     provides     = ['landez'],
     entry_points = dict(
         console_scripts = [
