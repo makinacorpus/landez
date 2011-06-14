@@ -229,24 +229,32 @@ class MBTilesBuilder(object):
         """
         Render the specified tile with Mapnik
         """
-        if not self._mapnik:
-            self._mapnik = mapnik.Map(self.tile_size, self.tile_size)
-            # Load style XML
-            mapnik.load_map(self._mapnik, self.stylefile, True)
-            # Obtain <Map> projection
-            self._prj = mapnik.Projection(self._mapnik.srs)
-
         # Calculate pixel positions of bottom-left & top-right
         p0 = (x * self.tile_size, (y + 1) * self.tile_size)
         p1 = ((x + 1) * self.tile_size, y * self.tile_size)
-
         # Convert to LatLong (EPSG:4326)
-        l0 = self.proj.fromPixelToLL(p0, z);
-        l1 = self.proj.fromPixelToLL(p1, z);
+        l0 = self.proj.fromPixelToLL(p0, z)
+        l1 = self.proj.fromPixelToLL(p1, z)
+        return self.render(self.stylefile, 
+                           (l0[0], l0[1], l1[0], l1[1]), 
+                           output, 
+                           self.tile_size, self.tile_size)
+
+    def render(self, stylefile, bbox, output, width, height):
+        """
+        Render the specified bbox (minx, miny, maxx, maxy) with Mapnik
+        """
+        if not self._mapnik:
+            self._mapnik = mapnik.Map(width, height)
+            # Load style XML
+            mapnik.load_map(self._mapnik, stylefile, True)
+            # Obtain <Map> projection
+            self._prj = mapnik.Projection(self._mapnik.srs)
 
         # Convert to map projection
-        c0 = self._prj.forward(mapnik.Coord(l0[0],l0[1]))
-        c1 = self._prj.forward(mapnik.Coord(l1[0],l1[1]))
+        assert len(bbox) == 4, "Provide a bounding box tuple (minx, miny, maxx, maxy)"
+        c0 = self._prj.forward(mapnik.Coord(bbox[0],bbox[1]))
+        c1 = self._prj.forward(mapnik.Coord(bbox[2],bbox[3]))
 
         # Bounding box for the tile
         if hasattr(mapnik,'mapnik_version') and mapnik.mapnik_version() >= 800:
@@ -254,11 +262,11 @@ class MBTilesBuilder(object):
         else:
             bbox = mapnik.Envelope(c0.x,c0.y, c1.x,c1.y)
         
-        self._mapnik.resize(self.tile_size, self.tile_size)
+        self._mapnik.resize(width, height)
         self._mapnik.zoom_to_box(bbox)
         self._mapnik.buffer_size = 128
 
         # Render image with default Agg renderer
-        im = mapnik.Image(self.tile_size, self.tile_size)
+        im = mapnik.Image(width, height)
         mapnik.render(self._mapnik, im)
         im.save(output, 'png256')
