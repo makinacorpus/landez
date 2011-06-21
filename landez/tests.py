@@ -1,7 +1,7 @@
 import os
 import unittest
 
-from tiles import MBTilesBuilder
+from tiles import MBTilesBuilder, EmptyCoverageError
 
 
 class TestMBTilesBuilder(unittest.TestCase):
@@ -51,6 +51,9 @@ class TestMBTilesBuilder(unittest.TestCase):
         mb.clean(full=True)
         self.assertFalse(os.path.exists(mb.filepath))
 
+    def test_run(self):
+        mb = MBTilesBuilder()
+        self.assertRaises(EmptyCoverageError, mb.run)
 
 if __name__ == '__main__':
     unittest.main()

@@ -38,6 +38,9 @@ class DownloadError(Exception):
     """ Raised when download at tiles URL fails DOWNLOAD_RETRIES times """
     pass
 
+class EmptyCoverageError(Exception):
+    """ Raised when coverage (tiles list) is empty """
+    pass
 
 class MBTilesBuilder(object):
     def __init__(self, **kwargs):
@@ -136,6 +139,8 @@ class MBTilesBuilder(object):
             logger.debug("Compute list of tiles for bbox %s on zooms %s." % (bbox, levels))
             tileslist = tileslist.union(self.tileslist(bbox, levels))
         self.nbtiles = len(tileslist)
+        if not self.nbtiles:
+            raise EmptyCoverageError()
         logger.debug("%s tiles to be packaged." % self.nbtiles)
 
         # Go through whole list of tiles and gather them in tmp_dir
