@@ -6,7 +6,7 @@ from setuptools import setup, find_packages
 here = os.path.abspath(os.path.dirname(__file__))
 
 setup(name       = 'landez',
-    version      = '1.0',
+    version      = '1.1',
     license      = 'LGPL',
     description  = 'Build a MBTiles file from a tiles server or a Mapnik stylesheet.',
     author       = "Mathieu Leplatre",
