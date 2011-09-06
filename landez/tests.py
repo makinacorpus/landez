@@ -57,7 +57,9 @@ class TestMBTilesBuilder(unittest.TestCase):
 
         mb.add_coverage(bbox=(-180.0, -90.0, 180.0, 90), zoomlevels=[0, 1])
         mb.run()
+        os.remove(mb.filepath)
         self.assertEqual(mb.nbtiles, 5)
+        
 
 if __name__ == '__main__':
     unittest.main()
