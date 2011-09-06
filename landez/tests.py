@@ -55,7 +55,7 @@ class TestMBTilesBuilder(unittest.TestCase):
         mb = MBTilesBuilder()
         self.assertRaises(EmptyCoverageError, mb.run)
 
-        mb.add_coverage(bbox=(-90.0, -180.0, 180.0, 90.0), zoomlevels=[0, 1])
+        mb.add_coverage(bbox=(-180.0, -90.0, 180.0, 90), zoomlevels=[0, 1])
         mb.run()
         self.assertEqual(mb.nbtiles, 5)
 
