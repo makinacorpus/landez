@@ -137,7 +137,10 @@ class MBTilesBuilder(object):
         tileslist = set()
         for bbox, levels in self._bboxes:
             logger.debug("Compute list of tiles for bbox %s on zooms %s." % (bbox, levels))
-            tileslist = tileslist.union(self.tileslist(bbox, levels))
+            bboxlist = self.tileslist(bbox, levels)
+            logger.debug("Add %s tiles." % len(bboxlist))
+            tileslist = tileslist.union(bboxlist)
+            logger.debug("%s tiles in total." % len(tileslist))
         self.nbtiles = len(tileslist)
         if not self.nbtiles:
             raise EmptyCoverageError()
