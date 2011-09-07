@@ -1,7 +1,7 @@
 import os
 import unittest
 
-from tiles import MBTilesBuilder, EmptyCoverageError
+from tiles import MBTilesBuilder, EmptyCoverageError, InvalidCoverageError
 
 
 class TestMBTilesBuilder(unittest.TestCase):
@@ -20,13 +20,20 @@ class TestMBTilesBuilder(unittest.TestCase):
         mb = MBTilesBuilder()
         
         # World at level 0
-        l = mb.tileslist((-90.0, -180.0, 180.0, 90.0), [0])
+        l = mb.tileslist((-180.0, -90.0, 180.0, 90.0), [0])
         self.assertEqual(l, [(0, 0, 0)])
         
         # World at levels [0, 1]
-        l = mb.tileslist((-90.0, -180.0, 180.0, 90.0), [0, 1])
+        l = mb.tileslist((-180.0, -90.0, 180.0, 90.0), [0, 1])
         self.assertEqual(l, [(0, 0, 0), 
                              (1, 0, 0), (1, 0, 1), (1, 1, 0), (1, 1, 1)])
+
+        self.assertRaises(InvalidCoverageError, mb.tileslist, (-91.0, -180.0), [0])
+        self.assertRaises(InvalidCoverageError, mb.tileslist, (-90.0, -180.0, 180.0, 90.0), [])
+        self.assertRaises(InvalidCoverageError, mb.tileslist, (-91.0, -180.0, 180.0, 90.0), [0])
+        self.assertRaises(InvalidCoverageError, mb.tileslist, (-91.0, -180.0, 181.0, 90.0), [0])
+        self.assertRaises(InvalidCoverageError, mb.tileslist, (-90.0, 180.0, 180.0, 90.0), [0])
+        self.assertRaises(InvalidCoverageError, mb.tileslist, (-30.0, -90.0, -50.0, 90.0), [0])
 
     def test_clean(self):
         mb = MBTilesBuilder()
@@ -55,7 +62,7 @@ class TestMBTilesBuilder(unittest.TestCase):
         mb = MBTilesBuilder()
         self.assertRaises(EmptyCoverageError, mb.run)
 
-        mb.add_coverage(bbox=(-180.0, -90.0, 180.0, 90), zoomlevels=[0, 1])
+        mb.add_coverage(bbox=(-180.0, -90.0, 180.0, 90.0), zoomlevels=[0, 1])
         mb.run()
         os.remove(mb.filepath)
         self.assertEqual(mb.nbtiles, 5)
