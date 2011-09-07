@@ -177,7 +177,7 @@ class MBTilesBuilder(object):
         """
         tile_dir = os.path.join("%s" % z, "%s" % x)
         y_mercator = (2**z - 1) - y
-        tile_name = "%s.png" % y_mercenator
+        tile_name = "%s.png" % y_mercator
         tile_path = os.path.join(tile_dir, tile_name)
         
         # Folder of tile is either cache or temporary
