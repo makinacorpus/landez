@@ -42,6 +42,11 @@ class EmptyCoverageError(Exception):
     """ Raised when coverage (tiles list) is empty """
     pass
 
+class InvalidCoverageError(Exception):
+    """ Raised when coverage bounds are invalid """
+    pass
+
+
 class MBTilesBuilder(object):
     def __init__(self, **kwargs):
         """
@@ -93,14 +98,26 @@ class MBTilesBuilder(object):
 
     def tileslist(self, bbox, zoomlevels):
         """
-        Build the tiles list within the bbox (minx, miny, maxx, maxy) at the specified zoom levels.
+        Build the tiles list within the bottom-left/top-right bounding 
+        box (minx, miny, maxx, maxy) at the specified zoom levels.
         Return a list of tuples (z,x,y)
         """
+        if len(bbox) != 4 or len(zoomlevels) == 0:
+            raise InvalidCoverageError()
+
+        xmin, ymin, xmax, ymax = bbox
+        if abs(xmin) > 180 or abs(xmax) > 180 or \
+           abs(ymin) > 90 or abs(ymax) > 90:
+            raise InvalidCoverageError()
+        
+        if xmin >= xmax or ymin >= ymax:
+            raise InvalidCoverageError()
+        
         if max(zoomlevels) >= self.proj.maxlevel:
             self.proj = GoogleProjection(self.tile_size, zoomlevels)
         
-        ll0 = (bbox[0],bbox[3])
-        ll1 = (bbox[2],bbox[1])
+        ll0 = (xmin, ymax)  # left top
+        ll1 = (xmax, ymin)  # right bottom
 
         l = []
         for z in zoomlevels:
