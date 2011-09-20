@@ -201,7 +201,7 @@ class MBTilesBuilder(object):
             sortedgrid.append([(x, y) for x in sorted(grid[y])])
         return sortedgrid
 
-    def exportimage(self, bbox, zoomlevel, imagepath):
+    def export_image(self, bbox, zoomlevel, imagepath):
         assert has_pil, "Cannot export image without python PIL"
         grid = self.gridtiles(bbox, zoomlevel)
         width = len(grid[0])

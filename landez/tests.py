@@ -47,7 +47,7 @@ class TestMBTilesBuilder(unittest.TestCase):
 
     def test_exportimage(self):
         mb = MBTilesBuilder()
-        mb.exportimage((-180.0, -90.0, 180.0, 90.0), 2, "image.png")
+        mb.export_image((-180.0, -90.0, 180.0, 90.0), 2, "image.png")
 
     def test_clean(self):
         mb = MBTilesBuilder()
