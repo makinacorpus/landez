@@ -35,6 +35,20 @@ class TestMBTilesBuilder(unittest.TestCase):
         self.assertRaises(InvalidCoverageError, mb.tileslist, (-90.0, 180.0, 180.0, 90.0), [0])
         self.assertRaises(InvalidCoverageError, mb.tileslist, (-30.0, -90.0, -50.0, 90.0), [0])
 
+    def test_gridtiles(self):
+        mb = MBTilesBuilder()
+
+        grid = mb.gridtiles((-180.0, -90.0, 180.0, 90.0), 0)
+        self.assertEqual(grid, [[(0, 0)]])
+        
+        grid = mb.gridtiles((-180.0, -90.0, 180.0, 90.0), 1)
+        self.assertEqual(grid, [[(0, 0), (1, 0)],
+                                [(0, 1), (1, 1)]])
+
+    def test_exportimage(self):
+        mb = MBTilesBuilder()
+        mb.exportimage((-180.0, -90.0, 180.0, 90.0), 2, "image.png")
+
     def test_clean(self):
         mb = MBTilesBuilder()
         self.assertEqual(mb.tmp_dir, '/tmp/tiles')

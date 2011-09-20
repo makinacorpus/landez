@@ -16,6 +16,17 @@ try:
 except ImportError:
     pass
 
+has_pil = False
+try:
+    import Image
+    has_pil = True
+except ImportError:
+    try:
+        from PIL import Image
+        has_pil = True
+    except ImportError:
+        pass
+
 
 """ Default tiles URL """
 DEFAULT_TILES_URL = "http://tile.cloudmade.com/f1fe9c2761a15118800b210c0eda823c/1/{size}/{z}/{x}/{y}.png"  # Register
@@ -174,6 +185,43 @@ class MBTilesBuilder(object):
         disk_to_mbtiles(self.tmp_dir, self.filepath)
         self.clean()
 
+    def gridtiles(self, bbox, zoomlevel):
+        """
+        Return a grid of (x, y) tuples representing the juxtaposition 
+        of tiles on the specified ``bbox`` at the specified ``zoomlevel``.
+        """
+        tiles = self.tileslist(bbox, [zoomlevel])
+        grid = {}
+        for (z, x, y) in tiles:
+            if not grid.get(y):
+                grid[y] = []
+            grid[y].append(x)
+        sortedgrid = []
+        for y in sorted(grid.keys()):
+            sortedgrid.append([(x, y) for x in sorted(grid[y])])
+        return sortedgrid
+
+    def exportimage(self, bbox, zoomlevel, imagepath):
+        assert has_pil, "Cannot export image without python PIL"
+        grid = self.gridtiles(bbox, zoomlevel)
+        width = len(grid[0])
+        height = len(grid)
+        widthpix = width * self.tile_size
+        heightpix = height * self.tile_size
+        
+        result = Image.new("RGBA", (widthpix, heightpix))
+        offset = (0, 0)
+        for i, row in enumerate(grid):
+            for j, (x, y) in enumerate(row):
+                offset = (j * self.tile_size, i * self.tile_size)
+                tile_path = self.tile_fullpath((zoomlevel, x, y))
+                if not self.cache or not os.path.exists(tile_path):
+                    #TODO: test if mbtiles exists, and extracts from it !
+                    self.prepare_tile((zoomlevel, x, y))
+                img = Image.open(tile_path)
+                result.paste(img, offset)
+        result.save(imagepath)
+
     def clean(self, full=False):
         """
         Remove temporary directory and destination MBTile if full = True
@@ -190,24 +238,32 @@ class MBTilesBuilder(object):
         except OSError:
             pass
 
-    def prepare_tile(self, (z, x, y)):
-        """
-        Check already rendered tiles in `tiles_dir`, and copy them in the
-        same temporary directory.
-        """
+    def tile_file(self, (z, x, y)):
         tile_dir = os.path.join("%s" % z, "%s" % x)
         y_mercator = (2**z - 1) - y
         tile_name = "%s.png" % y_mercator
-        tile_path = os.path.join(tile_dir, tile_name)
-        
+        return tile_dir, tile_name
+
+    def tile_fullpath(self, (z, x, y)):
+        tile_dir, tile_name = self.tile_file((z, x, y))
         # Folder of tile is either cache or temporary
         tmp_dir = os.path.join(self.tmp_dir, tile_dir)        
         tile_abs_dir = tmp_dir
         if self.cache:
             tile_abs_dir = os.path.join(self.tiles_dir, tile_dir)
         # Full path of tile
-        tile_abs_uri = os.path.join(tile_abs_dir, tile_name)
-
+        return os.path.join(tile_abs_dir, tile_name)
+        
+    def prepare_tile(self, (z, x, y)):
+        """
+        Check already rendered tiles in `tiles_dir`, and copy them in the
+        same temporary directory.
+        """
+        tile_dir, tile_name = self.tile_file((z, x, y))
+        tile_path = os.path.join(tile_dir, tile_name)
+        tile_abs_uri = self.tile_fullpath((z, x, y))
+        tile_abs_dir = os.path.dirname(tile_abs_uri)
+        
         # Render missing tiles !
         if self.cache and os.path.exists(tile_abs_uri):
             logger.debug("Found %s" % tile_abs_uri)
@@ -224,6 +280,7 @@ class MBTilesBuilder(object):
 
         # If taken or rendered in cache, copy it to temporary dir
         if self.cache:
+            tmp_dir = os.path.join(self.tmp_dir, tile_dir)
             if not os.path.isdir(tmp_dir):
                 os.makedirs(tmp_dir)
             shutil.copy(tile_abs_uri, tmp_dir)
