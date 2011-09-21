@@ -38,10 +38,10 @@ class TestMBTilesBuilder(unittest.TestCase):
     def test_gridtiles(self):
         mb = MBTilesBuilder()
 
-        grid = mb.gridtiles((-180.0, -90.0, 180.0, 90.0), 0)
+        grid = mb.grid_tiles((-180.0, -90.0, 180.0, 90.0), 0)
         self.assertEqual(grid, [[(0, 0)]])
         
-        grid = mb.gridtiles((-180.0, -90.0, 180.0, 90.0), 1)
+        grid = mb.grid_tiles((-180.0, -90.0, 180.0, 90.0), 1)
         self.assertEqual(grid, [[(0, 0), (1, 0)],
                                 [(0, 1), (1, 1)]])
 

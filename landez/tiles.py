@@ -185,7 +185,7 @@ class MBTilesBuilder(object):
         disk_to_mbtiles(self.tmp_dir, self.filepath)
         self.clean()
 
-    def gridtiles(self, bbox, zoomlevel):
+    def grid_tiles(self, bbox, zoomlevel):
         """
         Return a grid of (x, y) tuples representing the juxtaposition 
         of tiles on the specified ``bbox`` at the specified ``zoomlevel``.
@@ -203,7 +203,7 @@ class MBTilesBuilder(object):
 
     def export_image(self, bbox, zoomlevel, imagepath):
         assert has_pil, "Cannot export image without python PIL"
-        grid = self.gridtiles(bbox, zoomlevel)
+        grid = self.grid_tiles(bbox, zoomlevel)
         width = len(grid[0])
         height = len(grid)
         widthpix = width * self.tile_size
