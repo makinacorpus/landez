@@ -4,6 +4,7 @@ import urllib
 import shutil
 import logging
 import tempfile
+import sqlite3
 
 from mbutil import disk_to_mbtiles
 
@@ -49,6 +50,10 @@ class DownloadError(Exception):
     """ Raised when download at tiles URL fails DOWNLOAD_RETRIES times """
     pass
 
+class ExtractionError(Exception):
+    """ Raised when extraction of tiles from specified MBTiles has failed """
+    pass
+
 class EmptyCoverageError(Exception):
     """ Raised when coverage (tiles list) is empty """
     pass
@@ -73,12 +78,10 @@ class MBTilesBuilder(object):
         tile_size -- default tile size (default DEFAULT_TILE_SIZE)
         tiles_dir -- Local folder containing existing tiles, and 
                      where cached tiles will be stored (default DEFAULT_TILES_DIR)
+        mbtiles_file -- A MBTiles providing tiles (overrides ``tiles_url``)
         """
         self.remote = kwargs.get('remote', True)
         self.stylefile = kwargs.get('stylefile')
-        if not self.remote:
-            assert has_mapnik, "Cannot render tiles without mapnik !"
-            assert self.stylefile, "A mapnik stylesheet is required"
         
         self.filepath = kwargs.get('filepath', DEFAULT_FILEPATH)
         self.basename, ext = os.path.splitext(os.path.basename(self.filepath))
@@ -90,6 +93,12 @@ class MBTilesBuilder(object):
         self.tiles_dir = kwargs.get('tiles_dir', DEFAULT_TILES_DIR)
         self.tiles_url = kwargs.get('tiles_url', DEFAULT_TILES_URL)
         self.tile_size = kwargs.get('tile_size', DEFAULT_TILE_SIZE)
+        
+        self.mbtiles_file = kwargs.get('mbtiles_file')
+        
+        if not self.remote and not self.mbtiles_file:
+            assert has_mapnik, "Cannot render tiles without mapnik !"
+            assert self.stylefile, "A mapnik stylesheet is required"
         
         self.proj = GoogleProjection(self.tile_size)
         self._bboxes = []
@@ -215,9 +224,7 @@ class MBTilesBuilder(object):
             for j, (x, y) in enumerate(row):
                 offset = (j * self.tile_size, i * self.tile_size)
                 tile_path = self.tile_fullpath((zoomlevel, x, y))
-                if not self.cache or not os.path.exists(tile_path):
-                    #TODO: test if mbtiles exists, and extracts from it !
-                    self.prepare_tile((zoomlevel, x, y))
+                self.prepare_tile((zoomlevel, x, y))
                 img = Image.open(tile_path)
                 result.paste(img, offset)
         result.save(imagepath)
@@ -274,8 +281,12 @@ class MBTilesBuilder(object):
                 logger.debug("Download tile %s" % tile_path)
                 self.download_tile(tile_abs_uri, z, x, y)
             else:
-                logger.debug("Render tile %s" % tile_path)
-                self.render_tile(tile_abs_uri, z, x, y)
+                if self.mbtiles_file:
+                    logger.debug("Extract tile %s" % tile_path)
+                    self.extract_tile(tile_abs_uri, z, x, y)
+                else:
+                    logger.debug("Render tile %s" % tile_path)
+                    self.render_tile(tile_abs_uri, z, x, y)
             self.rendered += 1
 
         # If taken or rendered in cache, copy it to temporary dir
@@ -284,6 +295,22 @@ class MBTilesBuilder(object):
             if not os.path.isdir(tmp_dir):
                 os.makedirs(tmp_dir)
             shutil.copy(tile_abs_uri, tmp_dir)
+
+    def extract_tile(self, output, z, x, y):
+        """
+        Extract the specified tile from ``mbtiles_file``.
+        """
+        con = sqlite3.connect(self.mbtiles_file)
+        cur = con.cursor()
+        cur.execute("SELECT tile_data FROM tiles "
+                    "WHERE zoom_level=? AND tile_column=? AND tile_row=?;", (z, x, y))
+        t = cur.fetchone()
+        cur.close()
+        if not t:
+            raise ExtractionError
+        f = open(output, 'wb')
+        f.write(t[0])
+        f.close()
 
     def download_tile(self, output, z, x, y):
         """

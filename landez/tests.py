@@ -1,4 +1,5 @@
 import os
+import logging
 import unittest
 
 from tiles import MBTilesBuilder, EmptyCoverageError, InvalidCoverageError
@@ -73,14 +74,22 @@ class TestMBTilesBuilder(unittest.TestCase):
         self.assertFalse(os.path.exists(mb.filepath))
 
     def test_run(self):
-        mb = MBTilesBuilder()
+        mb = MBTilesBuilder(filepath='1.mbtiles')
         self.assertRaises(EmptyCoverageError, mb.run)
 
         mb.add_coverage(bbox=(-180.0, -90.0, 180.0, 90.0), zoomlevels=[0, 1])
         mb.run()
-        os.remove(mb.filepath)
         self.assertEqual(mb.nbtiles, 5)
+
+        # Test from other mbtiles
+        mb2 = MBTilesBuilder(filepath='2.mbtiles', mbtiles_file=mb.filepath, remote=False)
+        mb2.add_coverage(bbox=(-180.0, -90.0, 180.0, 90.0), zoomlevels=[1])
+        mb2.run()
+        self.assertEqual(mb2.nbtiles, 4)
         
+        os.remove(mb.filepath)
+        os.remove(mb2.filepath)
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.DEBUG)
     unittest.main()
