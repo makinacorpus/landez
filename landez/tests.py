@@ -100,8 +100,9 @@ class TestImageExporter(unittest.TestCase):
     def test_exportimage(self):
         mb = ImageExporter()
         mb.export_image((-180.0, -90.0, 180.0, 90.0), 2, "image.png")
-        #TODO test result image size
-
+        from PIL import Image
+        i = Image.open("image.png")
+        self.assertEqual((1024, 1024), i.size)
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
