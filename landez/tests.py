@@ -98,11 +98,25 @@ class TestImageExporter(unittest.TestCase):
                                 [(0, 1), (1, 1)]])
 
     def test_exportimage(self):
-        mb = ImageExporter()
-        mb.export_image((-180.0, -90.0, 180.0, 90.0), 2, "image.png")
         from PIL import Image
-        i = Image.open("image.png")
+        output = "image.png"
+        ie = ImageExporter()
+        ie.export_image((-180.0, -90.0, 180.0, 90.0), 2, output)
+        i = Image.open(output)
         self.assertEqual((1024, 1024), i.size)
+        os.remove(output)
+        
+        # Test from other mbtiles
+        mb = MBTilesBuilder(filepath='toulouse.mbtiles')
+        mb.add_coverage(bbox=(1.3, 43.5, 1.6, 43.7), zoomlevels=[12])
+        mb.run()
+        ie = ImageExporter(mbtiles_file=mb.filepath)
+        ie.export_image((1.3, 43.5, 1.6, 43.7), 12, output)
+        mb.clean(full=True)
+        i = Image.open(output)
+        self.assertEqual((1280, 1024), i.size)
+        os.remove(output)
+
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)

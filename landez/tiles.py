@@ -209,12 +209,13 @@ class TilesManager(object):
         """
         con = sqlite3.connect(self.mbtiles_file)
         cur = con.cursor()
+        y_mercator = (2**z - 1) - y
         cur.execute("SELECT tile_data FROM tiles "
-                    "WHERE zoom_level=? AND tile_column=? AND tile_row=?;", (z, x, y))
+                    "WHERE zoom_level=? AND tile_column=? AND tile_row=?;", (z, x, y_mercator))
         t = cur.fetchone()
         cur.close()
         if not t:
-            raise ExtractionError
+            raise ExtractionError("Could not extract %s from %s" % ((z, x, y), self.mbtiles_file))
         f = open(output, 'wb')
         f.write(t[0])
         f.close()
