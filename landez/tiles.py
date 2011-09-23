@@ -377,6 +377,7 @@ class MBTilesBuilder(TilesManager):
             if full:
                 logger.debug("Delete %s" % self.filepath)
                 os.remove(self.filepath)
+                os.remove("%s-journal" % self.filepath)
         except OSError:
             pass
 
