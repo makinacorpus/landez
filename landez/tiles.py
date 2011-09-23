@@ -32,7 +32,7 @@ except ImportError:
 """ Default tiles URL """
 DEFAULT_TILES_URL = "http://tile.cloudmade.com/f1fe9c2761a15118800b210c0eda823c/1/{size}/{z}/{x}/{y}.png"  # Register
 """ Base temporary folder for building MBTiles files """
-DEFAULT_TMP_DIR = tempfile.gettempdir()
+DEFAULT_TMP_DIR = os.path.join(tempfile.gettempdir(), 'landez')
 """ Base folder for sharing tiles between different runs """
 DEFAULT_TILES_DIR = DEFAULT_TMP_DIR
 """ Default output MBTiles file """
@@ -63,16 +63,18 @@ class InvalidCoverageError(Exception):
     pass
 
 
-class MBTilesBuilder(object):
+class TilesManager(object):
+   
     def __init__(self, **kwargs):
         """
-        A MBTiles builder, either from remote tiles or local mapnik rendering.
-
+        Manipulates tiles in general. Gives ability to list required tiles on a 
+        bounding box, download them, render them, extract them from other mbtiles...
+        
         Keyword arguments:
         remote -- use remote tiles (default True)
         stylefile -- mapnik stylesheet file, only necessary if `remote` is `False`
         cache -- use a local cache to share tiles between runs (default True)
-        filepath -- output MBTiles file (default DEFAULT_FILEPATH)
+
         tmp_dir -- temporary folder for gathering tiles (default DEFAULT_TMP_DIR)
         tiles_url -- remote URL to download tiles (default DEFAULT_TILES_URL)
         tile_size -- default tile size (default DEFAULT_TILE_SIZE)
@@ -82,12 +84,8 @@ class MBTilesBuilder(object):
         """
         self.remote = kwargs.get('remote', True)
         self.stylefile = kwargs.get('stylefile')
-        
-        self.filepath = kwargs.get('filepath', DEFAULT_FILEPATH)
-        self.basename, ext = os.path.splitext(os.path.basename(self.filepath))
-        
+
         self.tmp_dir = kwargs.get('tmp_dir', DEFAULT_TMP_DIR)
-        self.tmp_dir = os.path.join(self.tmp_dir, self.basename)
         
         self.cache = kwargs.get('cache', True)
         self.tiles_dir = kwargs.get('tiles_dir', DEFAULT_TILES_DIR)
@@ -95,26 +93,19 @@ class MBTilesBuilder(object):
         self.tile_size = kwargs.get('tile_size', DEFAULT_TILE_SIZE)
         
         self.mbtiles_file = kwargs.get('mbtiles_file')
+        if self.mbtiles_file:
+            self.remote = False
         
         if not self.remote and not self.mbtiles_file:
             assert has_mapnik, "Cannot render tiles without mapnik !"
             assert self.stylefile, "A mapnik stylesheet is required"
         
         self.proj = GoogleProjection(self.tile_size)
-        self._bboxes = []
         self._mapnik = None
         self._prj = None
 
         # Number of tiles rendered/downloaded here
         self.rendered = 0
-        # Number of tiles in total
-        self.nbtiles = 0
-
-    def add_coverage(self, bbox, zoomlevels):
-        """
-        Add a coverage
-        """
-        self._bboxes.append((bbox, zoomlevels))
 
     def tileslist(self, bbox, zoomlevels):
         """
@@ -155,109 +146,25 @@ class MBTilesBuilder(object):
                     l.append((z, x, y))
         return l
 
-    def run(self, force=False):
-        """
-        Build a MBTile file, only if it does not exist.
-        """
-        if os.path.exists(self.filepath):
-            if force:
-                logger.warn("%s already exists. Overwrite." % self.filepath)
-            else:
-                # Already built, do not do anything.
-                logger.info("%s already exists. Nothing to do." % self.filepath)
-                return
-        
-        # Clean previous runs
-        self.clean(full=force)
-        
-        # Compute list of tiles
-        tileslist = set()
-        for bbox, levels in self._bboxes:
-            logger.debug("Compute list of tiles for bbox %s on zooms %s." % (bbox, levels))
-            bboxlist = self.tileslist(bbox, levels)
-            logger.debug("Add %s tiles." % len(bboxlist))
-            tileslist = tileslist.union(bboxlist)
-            logger.debug("%s tiles in total." % len(tileslist))
-        self.nbtiles = len(tileslist)
-        if not self.nbtiles:
-            raise EmptyCoverageError()
-        logger.debug("%s tiles to be packaged." % self.nbtiles)
-
-        # Go through whole list of tiles and gather them in tmp_dir
-        self.rendered = 0
-        for (z, x, y) in tileslist:
-            self.prepare_tile((z, x, y))
-        logger.debug("%s tiles were missing." % self.rendered)
-
-        # Package it! 
-        logger.info("Build MBTiles file '%s'." % self.filepath)
-        disk_to_mbtiles(self.tmp_dir, self.filepath)
-        self.clean()
-
-    def grid_tiles(self, bbox, zoomlevel):
-        """
-        Return a grid of (x, y) tuples representing the juxtaposition 
-        of tiles on the specified ``bbox`` at the specified ``zoomlevel``.
-        """
-        tiles = self.tileslist(bbox, [zoomlevel])
-        grid = {}
-        for (z, x, y) in tiles:
-            if not grid.get(y):
-                grid[y] = []
-            grid[y].append(x)
-        sortedgrid = []
-        for y in sorted(grid.keys()):
-            sortedgrid.append([(x, y) for x in sorted(grid[y])])
-        return sortedgrid
-
-    def export_image(self, bbox, zoomlevel, imagepath):
-        assert has_pil, "Cannot export image without python PIL"
-        grid = self.grid_tiles(bbox, zoomlevel)
-        width = len(grid[0])
-        height = len(grid)
-        widthpix = width * self.tile_size
-        heightpix = height * self.tile_size
-        
-        result = Image.new("RGBA", (widthpix, heightpix))
-        offset = (0, 0)
-        for i, row in enumerate(grid):
-            for j, (x, y) in enumerate(row):
-                offset = (j * self.tile_size, i * self.tile_size)
-                tile_path = self.tile_fullpath((zoomlevel, x, y))
-                self.prepare_tile((zoomlevel, x, y))
-                img = Image.open(tile_path)
-                result.paste(img, offset)
-        result.save(imagepath)
-
-    def clean(self, full=False):
-        """
-        Remove temporary directory and destination MBTile if full = True
-        """
-        logger.debug("Clean-up %s" % self.tmp_dir)
-        try:
-            shutil.rmtree(self.tmp_dir)
-        except OSError:
-            pass
-        try:
-            if full:
-                logger.debug("Delete %s" % self.filepath)
-                os.remove(self.filepath)
-        except OSError:
-            pass
-
     def tile_file(self, (z, x, y)):
+        """
+        Return folder (``z/x``) and name (``y.png``) for the specified tuple.
+        """
         tile_dir = os.path.join("%s" % z, "%s" % x)
         y_mercator = (2**z - 1) - y
         tile_name = "%s.png" % y_mercator
         return tile_dir, tile_name
 
     def tile_fullpath(self, (z, x, y)):
+        """
+        Return the full path to the tile for the specified tuple (either cache or temporary)
+        """
         tile_dir, tile_name = self.tile_file((z, x, y))
         # Folder of tile is either cache or temporary
-        tmp_dir = os.path.join(self.tmp_dir, tile_dir)        
-        tile_abs_dir = tmp_dir
         if self.cache:
             tile_abs_dir = os.path.join(self.tiles_dir, tile_dir)
+        else:
+            tile_abs_dir = os.path.join(self.tmp_dir, tile_dir)
         # Full path of tile
         return os.path.join(tile_abs_dir, tile_name)
         
@@ -290,7 +197,7 @@ class MBTilesBuilder(object):
             self.rendered += 1
 
         # If taken or rendered in cache, copy it to temporary dir
-        if self.cache:
+        if self.cache and self.tmp_dir != self.tiles_dir:
             tmp_dir = os.path.join(self.tmp_dir, tile_dir)
             if not os.path.isdir(tmp_dir):
                 os.makedirs(tmp_dir)
@@ -380,3 +287,141 @@ class MBTilesBuilder(object):
         im = mapnik.Image(width, height)
         mapnik.render(self._mapnik, im)
         im.save(output, 'png256')
+
+    def clean(self):
+        """
+        Remove temporary directory and destination MBTile if full = True
+        """
+        logger.debug("Clean-up %s" % self.tmp_dir)
+        try:
+            shutil.rmtree(self.tmp_dir)
+            # Delete parent folder only if empty
+            try:
+                parent = os.path.dirname(self.tmp_dir)
+                os.rmdir(parent)
+                logger.debug("Clean-up parent %s" % parent)
+            except OSError:
+                pass
+        except OSError:
+            pass
+
+
+class MBTilesBuilder(TilesManager):
+    def __init__(self, **kwargs):
+        """
+        A MBTiles builder for a list of bounding boxes and zoom levels.
+
+        filepath -- output MBTiles file (default DEFAULT_FILEPATH)
+        """
+        super(MBTilesBuilder, self).__init__(**kwargs)
+        self.filepath = kwargs.get('filepath', DEFAULT_FILEPATH)
+        self.basename, ext = os.path.splitext(os.path.basename(self.filepath))
+        self.tmp_dir = os.path.join(self.tmp_dir, self.basename)
+        self.tiles_dir = kwargs.get('tiles_dir', self.tmp_dir)
+        # Number of tiles in total
+        self.nbtiles = 0
+        self._bboxes = []
+
+    def add_coverage(self, bbox, zoomlevels):
+        """
+        Add a coverage to be included in the resulting mbtiles file.
+        """
+        self._bboxes.append((bbox, zoomlevels))
+
+    def run(self, force=False):
+        """
+        Build a MBTile file, only if it does not exist.
+        """
+        if os.path.exists(self.filepath):
+            if force:
+                logger.warn("%s already exists. Overwrite." % self.filepath)
+            else:
+                # Already built, do not do anything.
+                logger.info("%s already exists. Nothing to do." % self.filepath)
+                return
+        
+        # Clean previous runs
+        self.clean(full=force)
+        
+        # Compute list of tiles
+        tileslist = set()
+        for bbox, levels in self._bboxes:
+            logger.debug("Compute list of tiles for bbox %s on zooms %s." % (bbox, levels))
+            bboxlist = self.tileslist(bbox, levels)
+            logger.debug("Add %s tiles." % len(bboxlist))
+            tileslist = tileslist.union(bboxlist)
+            logger.debug("%s tiles in total." % len(tileslist))
+        self.nbtiles = len(tileslist)
+        if not self.nbtiles:
+            raise EmptyCoverageError()
+        logger.debug("%s tiles to be packaged." % self.nbtiles)
+
+        # Go through whole list of tiles and gather them in tmp_dir
+        self.rendered = 0
+        for (z, x, y) in tileslist:
+            self.prepare_tile((z, x, y))
+        logger.debug("%s tiles were missing." % self.rendered)
+
+        # Package it! 
+        logger.info("Build MBTiles file '%s'." % self.filepath)
+        disk_to_mbtiles(self.tmp_dir, self.filepath)
+        self.clean()
+
+    def clean(self, full=False):
+        """
+        Remove temporary directory and destination MBTile if full = True
+        """
+        super(MBTilesBuilder, self).clean()
+        try:
+            if full:
+                logger.debug("Delete %s" % self.filepath)
+                os.remove(self.filepath)
+        except OSError:
+            pass
+
+
+class ImageExporter(TilesManager):
+    def __init__(self, **kwargs):
+        """
+        Arrange the tiles and join them together to build a single big image.
+        """
+        super(ImageExporter, self).__init__(**kwargs)
+
+    def grid_tiles(self, bbox, zoomlevel):
+        """
+        Return a grid of (x, y) tuples representing the juxtaposition 
+        of tiles on the specified ``bbox`` at the specified ``zoomlevel``.
+        """
+        tiles = self.tileslist(bbox, [zoomlevel])
+        grid = {}
+        for (z, x, y) in tiles:
+            if not grid.get(y):
+                grid[y] = []
+            grid[y].append(x)
+        sortedgrid = []
+        for y in sorted(grid.keys()):
+            sortedgrid.append([(x, y) for x in sorted(grid[y])])
+        return sortedgrid
+
+    def export_image(self, bbox, zoomlevel, imagepath):
+        """
+        Writes to ``imagepath`` the tiles for the specified bounding box and zoomlevel.
+        """
+        assert has_pil, "Cannot export image without python PIL"
+        grid = self.grid_tiles(bbox, zoomlevel)
+        width = len(grid[0])
+        height = len(grid)
+        widthpix = width * self.tile_size
+        heightpix = height * self.tile_size
+        
+        result = Image.new("RGBA", (widthpix, heightpix))
+        offset = (0, 0)
+        for i, row in enumerate(grid):
+            for j, (x, y) in enumerate(row):
+                offset = (j * self.tile_size, i * self.tile_size)
+                tile_path = self.tile_fullpath((zoomlevel, x, y))
+                self.prepare_tile((zoomlevel, x, y))
+                img = Image.open(tile_path)
+                result.paste(img, offset)
+        result.save(imagepath)
+        self.clean()
