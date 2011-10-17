@@ -158,9 +158,7 @@ def disk_to_mbtiles(directory_path, mbtiles_file):
                             f.close()
                             count = count + 1
                             if (count % 100) == 0:
-                                for c in msg: sys.stdout.write(chr(8))
-                                msg = "%s tiles inserted (%d tiles/sec)" % (count, count / (time.time() - start_time))
-                                sys.stdout.write(msg)
+                                logger.debug("%s tiles inserted (%d tiles/sec)" % (count, count / (time.time() - start_time)))
     logger.debug('tiles inserted.')
     optimize_database(con)
 
@@ -185,7 +183,6 @@ def mbtiles_to_disk(mbtiles_file, directory_path):
         f.write(t[3])
         f.close()
         done = done + 1
-        for c in msg: sys.stdout.write(chr(8))
         logger.info('%s / %s tiles exported' % (done, count))
         t = tiles.fetchone()
 
