@@ -2,7 +2,8 @@ import os
 import logging
 import unittest
 
-from tiles import TilesManager, MBTilesBuilder, ImageExporter, EmptyCoverageError, InvalidCoverageError
+from tiles import (TilesManager, MBTilesBuilder, ImageExporter, EmptyCoverageError, 
+                   InvalidCoverageError, DownloadError)
 
 
 class TestTilesManager(unittest.TestCase):
@@ -41,6 +42,36 @@ class TestTilesManager(unittest.TestCase):
         self.assertTrue(os.path.exists(mb.tmp_dir))
         mb.clean()
         self.assertFalse(os.path.exists(mb.tmp_dir))
+
+    def test_download_tile(self):
+        output = '/tmp/tile.png'
+        if os.path.exists(output): os.remove(output)
+        
+        # Unknown URL keyword
+        mb = TilesManager()
+        mb.tiles_url = "http://{X}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        self.assertRaises(DownloadError, mb.download_tile, output, 1, 1, 1)
+        self.assertFalse(os.path.exists(output))
+        # With subdomain keyword
+        mb.tiles_url = "http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        mb.download_tile(output, 1, 1, 1)
+        self.assertTrue(os.path.exists(output))
+        # No subdomain keyword
+        mb.tiles_url = "http://tile.cloudmade.com/f1fe9c2761a15118800b210c0eda823c/1/{size}/{z}/{x}/{y}.png"
+        mb.download_tile(output, 1, 1, 1)
+        self.assertTrue(os.path.exists(output))
+        # Subdomain in available range
+        mb.tiles_url = "http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        mb.tiles_subdomains = list("abc")
+        for y in range(3):
+            mb.download_tile(output, 10, 0, y)
+            self.assertTrue(os.path.exists(output))
+        # Subdomain out of range
+        mb.tiles_subdomains = list("abcz")
+        self.assertRaises(DownloadError, mb.download_tile, output, 10, 1, 2)
+        
+        # Clean out
+        os.remove(output)
 
 
 class TestMBTilesBuilder(unittest.TestCase):

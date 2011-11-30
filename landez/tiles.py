@@ -30,7 +30,9 @@ except ImportError:
 
 
 """ Default tiles URL """
-DEFAULT_TILES_URL = "http://tile.cloudmade.com/f1fe9c2761a15118800b210c0eda823c/1/{size}/{z}/{x}/{y}.png"  # Register
+DEFAULT_TILES_URL = "http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+""" Default tiles subdomains """
+DEFAULT_TILES_SUBDOMAINS = list("abc")
 """ Base temporary folder for building MBTiles files """
 DEFAULT_TMP_DIR = os.path.join(tempfile.gettempdir(), 'landez')
 """ Base folder for sharing tiles between different runs """
@@ -90,6 +92,7 @@ class TilesManager(object):
         self.cache = kwargs.get('cache', True)
         self.tiles_dir = kwargs.get('tiles_dir', DEFAULT_TILES_DIR)
         self.tiles_url = kwargs.get('tiles_url', DEFAULT_TILES_URL)
+        self.tiles_subdomains = kwargs.get('tiles_subdomains', DEFAULT_TILES_SUBDOMAINS)
         self.tile_size = kwargs.get('tile_size', DEFAULT_TILE_SIZE)
         
         self.mbtiles_file = kwargs.get('mbtiles_file')
@@ -224,8 +227,9 @@ class TilesManager(object):
         """
         Download the specified tile from `tiles_url`
         """
-        # Render each keyword in URL ({x}, {y}, {z}, {size} ... )
+        # Render each keyword in URL ({s}, {x}, {y}, {z}, {size} ... )
         size = self.tile_size
+        s = self.tiles_subdomains[(x + y) % len(self.tiles_subdomains)];
         try:
             url = self.tiles_url.format(**locals())
         except KeyError, e:
