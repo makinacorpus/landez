@@ -13,7 +13,7 @@ setup(name       = 'landez',
     author_email = "mathieu.leplatre@makina-corpus.com",
     url          = "https://github.com/makinacorpus/landez/",
     download_url = "http://pypi.python.org/pypi/landez/",
-    long_description = open(os.path.join(here, 'README')).read(),
+    long_description = open(os.path.join(here, 'README.rst')).read(),
     provides     = ['landez'],
     entry_points = dict(
         console_scripts = [
@@ -21,7 +21,7 @@ setup(name       = 'landez',
     install_requires=[
     ],
     packages     = find_packages(),
-    platforms    = ('any'),
+    platforms    = ['any'],
     keywords     = ['MBTiles', 'Mapnik'],
     classifiers  = ['Programming Language :: Python :: 2.6',
                     'Operating System :: OS Independent',
