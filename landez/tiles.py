@@ -117,15 +117,15 @@ class TilesManager(object):
         Return a list of tuples (z,x,y)
         """
         if len(bbox) != 4 or len(zoomlevels) == 0:
-            raise InvalidCoverageError()
+            raise InvalidCoverageError("Wrong format of bounding box or zoom levels.")
 
         xmin, ymin, xmax, ymax = bbox
         if abs(xmin) > 180 or abs(xmax) > 180 or \
            abs(ymin) > 90 or abs(ymax) > 90:
-            raise InvalidCoverageError()
+            raise InvalidCoverageError("Some coordinates exceed [-180,+180], [-90, 90].")
         
         if xmin >= xmax or ymin >= ymax:
-            raise InvalidCoverageError()
+            raise InvalidCoverageError("Bounding box format is (xmin, ymin, xmax, ymax)")
         
         if max(zoomlevels) >= self.proj.maxlevel:
             self.proj = GoogleProjection(self.tile_size, zoomlevels)
@@ -358,7 +358,7 @@ class MBTilesBuilder(TilesManager):
             logger.debug("%s tiles in total." % len(tileslist))
         self.nbtiles = len(tileslist)
         if not self.nbtiles:
-            raise EmptyCoverageError()
+            raise EmptyCoverageError("No tiles are covered by bounding boxes : %s" % self._bboxes)
         logger.debug("%s tiles to be packaged." % self.nbtiles)
 
         # Go through whole list of tiles and gather them in tmp_dir
