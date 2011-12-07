@@ -21,7 +21,7 @@ setup(name       = 'landez',
     install_requires=[
     ],
     packages     = find_packages(),
-    platforms    = ('any',),
+    platforms    = ('any'),
     keywords     = ['MBTiles', 'Mapnik'],
     classifiers  = ['Programming Language :: Python :: 2.6',
                     'Operating System :: OS Independent',
