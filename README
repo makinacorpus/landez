@@ -78,6 +78,27 @@ From an other MBTiles file
     mb.run()
 
 
+Manipulate tiles
+================
+
+::
+
+    from landez import MBTilesBuilder
+    
+    # From a TMS tile server
+    # tm = TilesManager(tiles_url="http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png")
+    
+    # From a MBTiles file
+    tm = TilesManager(mbtiles_file="yourfile.mbtiles")
+    
+    tiles = tm.tileslist(bbox=(-180.0, -90.0, 180.0, 90.0), 
+                         zoomlevels=[0, 1])
+    for tile in tiles:
+        tm.prepare_tile(tile)  # download, extract or take from cache
+        tile_path = tm.tile_fullpath(tile)
+        ...
+
+
 Export Images
 =============
 
