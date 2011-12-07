@@ -5,6 +5,7 @@ import shutil
 import logging
 import tempfile
 import sqlite3
+from gettext import gettext as _
 
 from mbutil import disk_to_mbtiles
 
@@ -100,8 +101,8 @@ class TilesManager(object):
             self.remote = False
         
         if not self.remote and not self.mbtiles_file:
-            assert has_mapnik, "Cannot render tiles without mapnik !"
-            assert self.stylefile, "A mapnik stylesheet is required"
+            assert has_mapnik, _("Cannot render tiles without mapnik !")
+            assert self.stylefile, _("A mapnik stylesheet is required")
         
         self.proj = GoogleProjection(self.tile_size)
         self._mapnik = None
@@ -117,15 +118,15 @@ class TilesManager(object):
         Return a list of tuples (z,x,y)
         """
         if len(bbox) != 4 or len(zoomlevels) == 0:
-            raise InvalidCoverageError("Wrong format of bounding box or zoom levels.")
+            raise InvalidCoverageError(_("Wrong format of bounding box or zoom levels."))
 
         xmin, ymin, xmax, ymax = bbox
         if abs(xmin) > 180 or abs(xmax) > 180 or \
            abs(ymin) > 90 or abs(ymax) > 90:
-            raise InvalidCoverageError("Some coordinates exceed [-180,+180], [-90, 90].")
+            raise InvalidCoverageError(_("Some coordinates exceed [-180,+180], [-90, 90]."))
         
         if xmin >= xmax or ymin >= ymax:
-            raise InvalidCoverageError("Bounding box format is (xmin, ymin, xmax, ymax)")
+            raise InvalidCoverageError(_("Bounding box format is (xmin, ymin, xmax, ymax)"))
         
         if max(zoomlevels) >= self.proj.maxlevel:
             self.proj = GoogleProjection(self.tile_size, zoomlevels)
@@ -183,19 +184,19 @@ class TilesManager(object):
         
         # Render missing tiles !
         if self.cache and os.path.exists(tile_abs_uri):
-            logger.debug("Found %s" % tile_abs_uri)
+            logger.debug(_("Found %s") % tile_abs_uri)
         else:
             if not os.path.isdir(tile_abs_dir):
                 os.makedirs(tile_abs_dir)
             if self.remote:
-                logger.debug("Download tile %s" % tile_path)
+                logger.debug(_("Download tile %s") % tile_path)
                 self.download_tile(tile_abs_uri, z, x, y)
             else:
                 if self.mbtiles_file:
-                    logger.debug("Extract tile %s" % tile_path)
+                    logger.debug(_("Extract tile %s") % tile_path)
                     self.extract_tile(tile_abs_uri, z, x, y)
                 else:
-                    logger.debug("Render tile %s" % tile_path)
+                    logger.debug(_("Render tile %s") % tile_path)
                     self.render_tile(tile_abs_uri, z, x, y)
             self.rendered += 1
 
@@ -218,7 +219,7 @@ class TilesManager(object):
         t = cur.fetchone()
         cur.close()
         if not t:
-            raise ExtractionError("Could not extract %s from %s" % ((z, x, y), self.mbtiles_file))
+            raise ExtractionError(_("Could not extract %s from %s") % ((z, x, y), self.mbtiles_file))
         f = open(output, 'wb')
         f.write(t[0])
         f.close()
@@ -233,9 +234,9 @@ class TilesManager(object):
         try:
             url = self.tiles_url.format(**locals())
         except KeyError, e:
-            raise DownloadError("Unknown keyword %s in URL" % e)
+            raise DownloadError(_("Unknown keyword %s in URL") % e)
         
-        logger.debug("Retrieve tile at %s" % url)
+        logger.debug(_("Retrieve tile at %s") % url)
         r = DOWNLOAD_RETRIES
         while r > 0:
             try:
@@ -243,7 +244,7 @@ class TilesManager(object):
                 image.retrieve(url, output)
                 return  # Done.
             except IOError, e:
-                logger.debug("Download error, retry (%s left). (%s)" % (r, e))
+                logger.debug(_("Download error, retry (%s left). (%s)") % (r, e))
                 r -= 1
         raise DownloadError
 
@@ -274,7 +275,7 @@ class TilesManager(object):
             self._prj = mapnik.Projection(self._mapnik.srs)
 
         # Convert to map projection
-        assert len(bbox) == 4, "Provide a bounding box tuple (minx, miny, maxx, maxy)"
+        assert len(bbox) == 4, _("Provide a bounding box tuple (minx, miny, maxx, maxy)")
         c0 = self._prj.forward(mapnik.Coord(bbox[0],bbox[1]))
         c1 = self._prj.forward(mapnik.Coord(bbox[2],bbox[3]))
 
@@ -297,14 +298,14 @@ class TilesManager(object):
         """
         Remove temporary directory and destination MBTile if full = True
         """
-        logger.debug("Clean-up %s" % self.tmp_dir)
+        logger.debug(_("Clean-up %s") % self.tmp_dir)
         try:
             shutil.rmtree(self.tmp_dir)
             # Delete parent folder only if empty
             try:
                 parent = os.path.dirname(self.tmp_dir)
                 os.rmdir(parent)
-                logger.debug("Clean-up parent %s" % parent)
+                logger.debug(_("Clean-up parent %s") % parent)
             except OSError:
                 pass
         except OSError:
@@ -339,10 +340,10 @@ class MBTilesBuilder(TilesManager):
         """
         if os.path.exists(self.filepath):
             if force:
-                logger.warn("%s already exists. Overwrite." % self.filepath)
+                logger.warn(_("%s already exists. Overwrite.") % self.filepath)
             else:
                 # Already built, do not do anything.
-                logger.info("%s already exists. Nothing to do." % self.filepath)
+                logger.info(_("%s already exists. Nothing to do.") % self.filepath)
                 return
         
         # Clean previous runs
@@ -351,24 +352,24 @@ class MBTilesBuilder(TilesManager):
         # Compute list of tiles
         tileslist = set()
         for bbox, levels in self._bboxes:
-            logger.debug("Compute list of tiles for bbox %s on zooms %s." % (bbox, levels))
+            logger.debug(_("Compute list of tiles for bbox %s on zooms %s.") % (bbox, levels))
             bboxlist = self.tileslist(bbox, levels)
-            logger.debug("Add %s tiles." % len(bboxlist))
+            logger.debug(_("Add %s tiles.") % len(bboxlist))
             tileslist = tileslist.union(bboxlist)
-            logger.debug("%s tiles in total." % len(tileslist))
+            logger.debug(_("%s tiles in total.") % len(tileslist))
         self.nbtiles = len(tileslist)
         if not self.nbtiles:
-            raise EmptyCoverageError("No tiles are covered by bounding boxes : %s" % self._bboxes)
-        logger.debug("%s tiles to be packaged." % self.nbtiles)
+            raise EmptyCoverageError(_("No tiles are covered by bounding boxes : %s") % self._bboxes)
+        logger.debug(_("%s tiles to be packaged.") % self.nbtiles)
 
         # Go through whole list of tiles and gather them in tmp_dir
         self.rendered = 0
         for (z, x, y) in tileslist:
             self.prepare_tile((z, x, y))
-        logger.debug("%s tiles were missing." % self.rendered)
+        logger.debug(_("%s tiles were missing.") % self.rendered)
 
         # Package it! 
-        logger.info("Build MBTiles file '%s'." % self.filepath)
+        logger.info(_("Build MBTiles file '%s'.") % self.filepath)
         disk_to_mbtiles(self.tmp_dir, self.filepath)
         self.clean()
 
@@ -379,7 +380,7 @@ class MBTilesBuilder(TilesManager):
         super(MBTilesBuilder, self).clean()
         try:
             if full:
-                logger.debug("Delete %s" % self.filepath)
+                logger.debug(_("Delete %s") % self.filepath)
                 os.remove(self.filepath)
                 os.remove("%s-journal" % self.filepath)
         except OSError:
@@ -413,7 +414,7 @@ class ImageExporter(TilesManager):
         """
         Writes to ``imagepath`` the tiles for the specified bounding box and zoomlevel.
         """
-        assert has_pil, "Cannot export image without python PIL"
+        assert has_pil, _("Cannot export image without python PIL")
         grid = self.grid_tiles(bbox, zoomlevel)
         width = len(grid[0])
         height = len(grid)
