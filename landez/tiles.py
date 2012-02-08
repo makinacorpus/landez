@@ -10,6 +10,7 @@ from gettext import gettext as _
 from mbutil import disk_to_mbtiles
 
 from proj import GoogleProjection
+from reader import MBTilesReader
 
 has_mapnik = False
 try:
@@ -51,10 +52,6 @@ logger = logging.getLogger(__name__)
 
 class DownloadError(Exception):
     """ Raised when download at tiles URL fails DOWNLOAD_RETRIES times """
-    pass
-
-class ExtractionError(Exception):
-    """ Raised when extraction of tiles from specified MBTiles has failed """
     pass
 
 class EmptyCoverageError(Exception):
@@ -211,18 +208,9 @@ class TilesManager(object):
         """
         Extract the specified tile from ``mbtiles_file``.
         """
-        con = sqlite3.connect(self.mbtiles_file)
-        cur = con.cursor()
-        y_mercator = (2**z - 1) - y
-        cur.execute("SELECT tile_data FROM tiles "
-                    "WHERE zoom_level=? AND tile_column=? AND tile_row=?;", (z, x, y_mercator))
-        t = cur.fetchone()
-        cur.close()
-        if not t:
-            raise ExtractionError(_("Could not extract %s from %s") % ((z, x, y), self.mbtiles_file))
-        f = open(output, 'wb')
-        f.write(t[0])
-        f.close()
+        reader = MBTilesReader(self.mbtiles_file, self.tile_size)
+        with open(output, 'wb') as f:
+            f.write(reader.tile(z, x, y))
 
     def download_tile(self, output, z, x, y):
         """
