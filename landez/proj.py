@@ -21,6 +21,7 @@ class GoogleProjection(object):
         self.zc = []
         self.Ac = []
         self.maxlevel = max(levels) + 1
+        self.tilesize = tilesize
         c = tilesize
         for d in range(self.maxlevel):
             e = c/2;
@@ -43,3 +44,10 @@ class GoogleProjection(object):
          g = (px[1] - e[1])/-self.Cc[zoom]
          h = RAD_TO_DEG * ( 2 * atan(exp(g)) - 0.5 * pi)
          return (f,h)
+
+    def tile_at(self, zoom, position):
+        """
+        Returns a tuple of (z, x, y) 
+        """
+        x, y = self.fromLLtoPixel(position, zoom)
+        return (zoom, int(x/self.tilesize), int(y/self.tilesize))

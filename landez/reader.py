@@ -4,12 +4,18 @@ import logging
 import json
 from gettext import gettext as _
 
+from proj import GoogleProjection
+
 
 logger = logging.getLogger(__name__)
 
 
 class ExtractionError(Exception):
     """ Raised when extraction of tiles from specified MBTiles has failed """
+    pass
+
+class InvalidFormatError(Exception):
+    """ Raised when reading of MBTiles content has failed """
     pass
 
 
@@ -28,7 +34,10 @@ class MBTilesReader(object):
             self._cur = self._con.cursor()
         sql = ' '.join(sql.split())
         logger.debug(_("Execute query '%s' %s") % (sql, args))
-        self._cur.execute(sql, *args)
+        try:
+            self._cur.execute(sql, *args)
+        except (sqlite3.OperationalError, sqlite3.DatabaseError), e:
+            raise InvalidFormatError(_("%s while reading %s") % (e, self.filename))
         return self._cur
 
     def metadata(self):

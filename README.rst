@@ -115,6 +115,29 @@ Specify tiles sources in the exact same way as for building MBTiles files.
     ie.export_image(bbox=(-180.0, -90.0, 180.0, 90.0), zoomlevel=3, imagepath="image.png")
 
 
+Extract MBTiles content
+=======================
+
+:: 
+
+    from landez.reader import MBTilesReader
+    
+    mbreader = MBTilesReader("yourfile.mbtiles")
+    
+    # Metadata
+    print mbreader.metadata()
+    
+    # Zoom levels
+    print mbreader.zoomlevels()
+    
+    # Image tile
+    with open('tile.png', 'wb') as out:
+        out.write(reader.tile(z, x, y))
+    
+    # UTF-Grid tile
+    print reader.grid(z, x, y, 'callback')
+    
+
 =======
 AUTHORS
 =======
