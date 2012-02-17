@@ -183,10 +183,10 @@ class TilesManager(object):
         return os.path.join(tile_abs_dir, tile_name)
 
     def add_layer(self, tilemanager):
-		"""
-		Add a layer to be blended (alpha-composite) on top of the tile.
-		tilemanager -- a `TileManager` instance
-		"""
+        """
+        Add a layer to be blended (alpha-composite) on top of the tile.
+        tilemanager -- a `TileManager` instance
+        """
         assert has_pil, _("Cannot blend layers without python PIL")
         assert self.tile_size == tilemanager.tile_size, _("Cannot blend layers whose tile size differs")
         self._layers.append(tilemanager)
@@ -439,10 +439,14 @@ class MBTilesBuilder(TilesManager):
         logger.debug(_("%s tiles were missing.") % self.rendered)
 
         # Some metadata
+        middlezoom = self.zoomlevels[len(self.zoomlevels)/2]
+        lat = self.bounds[1] + (self.bounds[3] - self.bounds[1])/2
+        lon = self.bounds[0] + (self.bounds[2] - self.bounds[0])/2
         metadata = {}
         metadata['minzoom'] = self.zoomlevels[0]
         metadata['maxzoom'] = self.zoomlevels[-1]
-        metadata['bounds'] = ','.join(map(repr, self.bounds))
+        metadata['bounds'] = '%s,%s,%s,%s' % tuple(self.bounds)
+        metadata['center'] = '%s,%s,%s' % (lon, lat, middlezoom)
         metadatafile = os.path.join(self.tmp_dir, 'metadata.json')
         with open(metadatafile, 'w') as output:
             json.dump(metadata, output)

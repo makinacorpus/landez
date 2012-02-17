@@ -99,8 +99,25 @@ Manipulate tiles
         ...
 
 
+Blend tiles together
+====================
+
+Merge multiple sources of tiles (URL, MBTiles, Mapnik stylesheet) together. *(requires python PIL)*
+
+For example, build a new MBTiles by blending tiles of a MBTiles on top of OpenStreetMap tiles :
+
+::
+
+    mb = MBTilesBuilder(filepath="merged.mbtiles")
+    overlay = TilesManager(mbtiles_file="carto.mbtiles")
+    mb.add_layer(overlay)
+    mb.run()
+
+
 Export Images
 =============
+
+Assemble and arrange tiles together into a single image. *(requires python PIL)*
 
 Specify tiles sources in the exact same way as for building MBTiles files.
 
@@ -136,19 +153,6 @@ Extract MBTiles content
     
     # UTF-Grid tile
     print reader.grid(z, x, y, 'callback')
-
-
-Blend tiles together
-====================
-
-For example, build a new MBTiles by blending tiles of a MBTiles on top of OpenStreetMap tiles :
-
-::
-
-    mb = MBTilesBuilder(filepath="merged.mbtiles")
-    overlay = TilesManager(mbtiles_file="carto.mbtiles")
-    mb.add_layer(overlay)
-    mb.run()
 
 
 =======
