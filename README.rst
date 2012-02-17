@@ -136,7 +136,20 @@ Extract MBTiles content
     
     # UTF-Grid tile
     print reader.grid(z, x, y, 'callback')
-    
+
+
+Blend tiles together
+====================
+
+For example, build a new MBTiles by blending tiles of a MBTiles on top of OpenStreetMap tiles :
+
+::
+
+    mb = MBTilesBuilder(filepath="merged.mbtiles")
+    overlay = TilesManager(mbtiles_file="carto.mbtiles")
+    mb.add_layer(overlay)
+    mb.run()
+
 
 =======
 AUTHORS

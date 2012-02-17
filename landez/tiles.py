@@ -6,11 +6,13 @@ import logging
 import tempfile
 import sqlite3
 from gettext import gettext as _
+from urlparse import urlparse
+import json
 
 from mbutil import disk_to_mbtiles
 
 from proj import GoogleProjection
-from reader import MBTilesReader
+from reader import MBTilesReader, ExtractionError
 
 has_mapnik = False
 try:
@@ -94,17 +96,28 @@ class TilesManager(object):
         self.tile_size = kwargs.get('tile_size', DEFAULT_TILE_SIZE)
         
         self.mbtiles_file = kwargs.get('mbtiles_file')
-        if self.mbtiles_file:
-            self.remote = False
         
-        if not self.remote and not self.mbtiles_file:
+        basename = ''
+        if self.mbtiles_file:
+            basename = os.path.basename(self.mbtiles_file)
+            self.remote = False
+        elif not self.remote:
             assert has_mapnik, _("Cannot render tiles without mapnik !")
             assert self.stylefile, _("A mapnik stylesheet is required")
+            basename = os.path.basename(self.stylefile)
+        else:
+            url = urlparse(self.tiles_url)
+            basename = url.netloc
+        basename = re.sub(r'[^a-z^A-Z^0-9]+', '', basename)
+        self.tmp_dir = os.path.join(self.tmp_dir, basename)
+        self.tiles_dir = os.path.join(self.tiles_dir, basename)
         
         self.proj = GoogleProjection(self.tile_size)
         self._mapnik = None
         self._prj = None
-
+        self._reader = None
+        self._layers = []
+        
         # Number of tiles rendered/downloaded here
         self.rendered = 0
 
@@ -168,7 +181,16 @@ class TilesManager(object):
             tile_abs_dir = os.path.join(self.tmp_dir, tile_dir)
         # Full path of tile
         return os.path.join(tile_abs_dir, tile_name)
-        
+
+    def add_layer(self, tilemanager):
+		"""
+		Add a layer to be blended (alpha-composite) on top of the tile.
+		tilemanager -- a `TileManager` instance
+		"""
+        assert has_pil, _("Cannot blend layers without python PIL")
+        assert self.tile_size == tilemanager.tile_size, _("Cannot blend layers whose tile size differs")
+        self._layers.append(tilemanager)
+
     def prepare_tile(self, (z, x, y)):
         """
         Check already rendered tiles in `tiles_dir`, and copy them in the
@@ -197,6 +219,12 @@ class TilesManager(object):
                     self.render_tile(tile_abs_uri, z, x, y)
             self.rendered += 1
 
+        # Blend layers
+        if len(self._layers) > 0:
+            logger.debug(_("Will blend %s layer(s) into %s") % (len(self._layers),
+                                                                tile_abs_uri))
+            self.blend_layers(tile_abs_uri, (z, x, y))
+
         # If taken or rendered in cache, copy it to temporary dir
         if self.cache and self.tmp_dir != self.tiles_dir:
             tmp_dir = os.path.join(self.tmp_dir, tile_dir)
@@ -204,13 +232,45 @@ class TilesManager(object):
                 os.makedirs(tmp_dir)
             shutil.copy(tile_abs_uri, tmp_dir)
 
+    def blend_layers(self, tile_fullpath, (z, x, y)):
+        """
+        Merge tiles of all layers into the specified tile path
+        """
+        # Background first
+        background = Image.open(tile_fullpath)
+        result = Image.new("RGBA", (self.tile_size, self.tile_size))
+        result.paste(background, (0, 0))
+        
+        for layer in self._layers:
+            try:
+                # Prepare tile of overlay, if available
+                layer.prepare_tile((z, x, y))
+            except (DownloadError, ExtractionError), e:
+                logger.warn(e)
+                continue
+            # Extract alpha mask
+            tile_over = layer.tile_fullpath((z, x, y))
+            overlay = Image.open(tile_over)
+            overlay = overlay.convert("RGBA")
+            r, g, b, a = overlay.split()
+            overlay = Image.merge("RGB", (r, g, b))
+            mask = Image.merge("L", (a,))
+            result.paste(overlay, (0, 0), mask)
+        result.save(tile_fullpath)
+
+    @property
+    def reader(self):
+        assert self.mbtiles_file, _("No MBTiles file defined.")
+        if not self._reader:
+            self._reader = MBTilesReader(self.mbtiles_file, self.tile_size)
+        return self._reader
+
     def extract_tile(self, output, z, x, y):
         """
         Extract the specified tile from ``mbtiles_file``.
         """
-        reader = MBTilesReader(self.mbtiles_file, self.tile_size)
         with open(output, 'wb') as f:
-            f.write(reader.tile(z, x, y))
+            f.write(self.reader.tile(z, x, y))
 
     def download_tile(self, output, z, x, y):
         """
@@ -322,6 +382,20 @@ class MBTilesBuilder(TilesManager):
         """
         self._bboxes.append((bbox, zoomlevels))
 
+    @property
+    def zoomlevels(self):
+        """
+        Return the list of covered zoom levels
+        """
+        return self._bboxes[0][1]  #TODO: merge all coverages
+
+    @property
+    def bounds(self):
+        """
+        Return the bounding box of covered areas
+        """
+        return self._bboxes[0][0]  #TODO: merge all coverages
+
     def run(self, force=False):
         """
         Build a MBTile file, only if it does not exist.
@@ -336,7 +410,15 @@ class MBTilesBuilder(TilesManager):
         
         # Clean previous runs
         self.clean(full=force)
-        
+
+        # If no coverage added, use bottom layer metadata
+        if len(self._bboxes) == 0 and len(self._layers) > 0:
+            bottomlayer = self._layers[0]
+            metadata = bottomlayer.reader.metadata()
+            bbox = map(float, metadata.get('bounds', '').split(','))
+            zoomlevels = range(int(metadata.get('minzoom', 0)), int(metadata.get('maxzoom', 0)))
+            self.add_coverage(bbox=bbox, zoomlevels=zoomlevels)
+
         # Compute list of tiles
         tileslist = set()
         for bbox, levels in self._bboxes:
@@ -356,6 +438,17 @@ class MBTilesBuilder(TilesManager):
             self.prepare_tile((z, x, y))
         logger.debug(_("%s tiles were missing.") % self.rendered)
 
+        # Some metadata
+        metadata = {}
+        metadata['minzoom'] = self.zoomlevels[0]
+        metadata['maxzoom'] = self.zoomlevels[-1]
+        metadata['bounds'] = ','.join(map(repr, self.bounds))
+        metadatafile = os.path.join(self.tmp_dir, 'metadata.json')
+        with open(metadatafile, 'w') as output:
+            json.dump(metadata, output)
+
+        # TODO: add UTF-Grid of last layer, if any
+
         # Package it! 
         logger.info(_("Build MBTiles file '%s'.") % self.filepath)
         disk_to_mbtiles(self.tmp_dir, self.filepath)
@@ -367,6 +460,8 @@ class MBTilesBuilder(TilesManager):
         """
         super(MBTilesBuilder, self).clean()
         try:
+            for layer in self._layers:
+                layer.clean()
             if full:
                 logger.debug(_("Delete %s") % self.filepath)
                 os.remove(self.filepath)
