@@ -9,8 +9,8 @@ from tiles import (TilesManager, MBTilesBuilder, ImageExporter, EmptyCoverageErr
 class TestTilesManager(unittest.TestCase):
     def test_path(self):
         mb = TilesManager()
-        self.assertEqual(mb.tmp_dir, '/tmp/landez')
-        self.assertEqual(mb.tiles_dir, '/tmp/landez')
+        self.assertEqual(mb.tmp_dir, '/tmp/landez/stileopenstreetmaporg')
+        self.assertEqual(mb.tiles_dir, '/tmp/landez/stileopenstreetmaporg')
 
     def test_tileslist(self):
         mb = TilesManager()
@@ -33,7 +33,7 @@ class TestTilesManager(unittest.TestCase):
 
     def test_clean(self):
         mb = TilesManager()
-        self.assertEqual(mb.tmp_dir, '/tmp/landez')
+        self.assertEqual(mb.tmp_dir, '/tmp/landez/stileopenstreetmaporg')
         # Missing dir
         self.assertFalse(os.path.exists(mb.tmp_dir))
         mb.clean()
@@ -79,11 +79,11 @@ class TestMBTilesBuilder(unittest.TestCase):
         mb = MBTilesBuilder()
         self.assertEqual(mb.filepath, os.path.join(os.getcwd(), 'tiles.mbtiles'))
         self.assertEqual(mb.basename, 'tiles')
-        self.assertEqual(mb.tmp_dir, '/tmp/landez/tiles')
+        self.assertEqual(mb.tmp_dir, '/tmp/landez/stileopenstreetmaporg/tiles')
 
         mb = MBTilesBuilder(filepath='/foo/bar/toto.mb')
         self.assertEqual(mb.basename, 'toto')
-        self.assertEqual(mb.tmp_dir, '/tmp/landez/toto')
+        self.assertEqual(mb.tmp_dir, '/tmp/landez/stileopenstreetmaporg/toto')
 
     def test_run(self):
         mb = MBTilesBuilder(filepath='big.mbtiles')
