@@ -1,7 +1,7 @@
 *Landez* manipulates tiles, builds MBTiles and arrange tiles together into single images.
 
-Tiles can either be obtained from a remote tile service URL, from a local Mapnik stylesheet
-or from MBTiles files.
+Tiles can either be obtained from a remote tile service URL, from a local Mapnik stylesheet,
+a WMS server or from MBTiles files.
 
 For building MBTiles, it uses *mbutil* from Mapbox https://github.com/mapbox/mbutil at the final stage.
 The land covered is specified using a list of bounding boxes and zoom levels.
@@ -16,7 +16,7 @@ requires `mapnik` if the tiles are drawn locally. ::
 
     sudo aptitude install python-mapnik
 
-And `PIL` to export arranged tiles into images. ::
+And `PIL` to blend tiles together or export arranged tiles into images. ::
 
     sudo aptitude install python-imaging
 
@@ -76,6 +76,25 @@ From an other MBTiles file
     mb.add_coverage(bbox=(-180.0, -90.0, 180.0, 90.0), 
                     zoomlevels=[0, 1])
     mb.run()
+
+
+
+From a WMS server
+-----------------
+::
+
+    from landez.reader import WMSReader
+    
+    logging.basicConfig(level=logging.DEBUG)
+    
+    wms = WMSReader(url="http://yourserver.com/geoserver/wms", 
+                    layers=["ign:departements"], 
+                    format="image/png", 
+                    transparence=True)
+    
+    with open('test.png', 'wb') as f:
+        f.write(wms.tile(10, 510, 372))
+
 
 
 Manipulate tiles

@@ -3,7 +3,10 @@ import sqlite3
 import logging
 import json
 from gettext import gettext as _
+from pkg_resources import parse_version
+import urllib
 
+from . import DEFAULT_TILE_SIZE
 from proj import GoogleProjection
 
 
@@ -19,10 +22,17 @@ class InvalidFormatError(Exception):
     pass
 
 
-class MBTilesReader(object):
-    def __init__(self, filename, tilesize):
-        self.filename = filename
+class Reader(object):
+    def __init__(self, tilesize=None):
+        if not tilesize:
+            tilesize = DEFAULT_TILE_SIZE
         self.tilesize = tilesize
+
+
+class MBTilesReader(Reader):
+    def __init__(self, filename, tilesize=None):
+        super(MBTilesReader, self).__init__(tilesize)
+        self.filename = filename
         self._con = None
         self._cur = None
 
@@ -104,3 +114,48 @@ class MBTilesReader(object):
         # Convert center to (lon, lat)
         proj = GoogleProjection(S, [zoom])  # WGS84
         return proj.fromPixelToLL(bottomleft, zoom) + proj.fromPixelToLL(topright, zoom)
+
+
+class WMSReader(Reader):
+    
+    PROJECTION = 'EPSG:4326'
+    
+    def __init__(self, url, layers, tilesize=None, **kwargs):
+        super(WMSReader, self).__init__(tilesize)
+        self.url = url
+        self.wmsParams = dict(
+            service='WMS',
+            request='GetMap',
+            version='1.1.1',
+            styles='',
+            format='image/jpeg',
+            transparent=False,
+            layers=','.join(layers),
+            width=self.tilesize,
+            height=self.tilesize,
+        )
+        self.wmsParams.update(**kwargs)
+        projectionKey = 'srs'
+        if parse_version(self.wmsParams['version']) >= parse_version('1.3'):
+            projectionKey = 'crs'
+        self.wmsParams[projectionKey] = self.PROJECTION
+
+    def tile(self, z, x, y):
+        # Compute WGS84 bbox
+        proj = GoogleProjection(self.tilesize, [z])
+        topleft = (x * self.tilesize, (y + 1) * self.tilesize)
+        bottomright = ((x + 1) * self.tilesize, y * self.tilesize)
+        nw = proj.fromPixelToLL(topleft, z)
+        se = proj.fromPixelToLL(bottomright, z)
+        bbox = ','.join(map(str, [nw[0], nw[1], se[0], se[1]]))
+        # Build WMS request URL 
+        encodedparams = urllib.urlencode(self.wmsParams)
+        url = "%s?%s" % (self.url, encodedparams)
+        url += "&bbox=%s" % bbox
+        try:
+            f = urllib.urlopen(url)
+            header = f.info().typeheader
+            assert header == self.wmsParams['format'], "Invalid WMS response type : %s" % header
+            return f.read()
+        except (AssertionError, IOError), e:
+            raise ExtractionError
