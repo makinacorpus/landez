@@ -1,7 +1,9 @@
-from math import pi, cos, sin, log, exp, atan
+from math import pi, cos, sin, log, exp, atan, tan
 
 DEG_TO_RAD = pi/180
 RAD_TO_DEG = 180/pi
+MAX_LATITUDE = 85.0511287798
+EARTH_RADIUS = 6378137
 
 
 def minmax (a,b,c):
@@ -51,3 +53,31 @@ class GoogleProjection(object):
         """
         x, y = self.fromLLtoPixel(position, zoom)
         return (zoom, int(x/self.tilesize), int(y/self.tilesize))
+
+    def tile_bbox(self, (z, x, y)):
+        """
+        Returns the WGS84 bbox of the specified tile
+        """
+        topleft = (x * self.tilesize, (y + 1) * self.tilesize)
+        bottomright = ((x + 1) * self.tilesize, y * self.tilesize)
+        nw = self.fromPixelToLL(topleft, z)
+        se = self.fromPixelToLL(bottomright, z)
+        return nw + se
+
+    def project(self, (lng, lat)):
+        """
+        Returns the coordinates in meters from WGS84
+        """
+        x = lng * DEG_TO_RAD
+        lat = max(min(MAX_LATITUDE, lat), -MAX_LATITUDE)
+        y = lat * DEG_TO_RAD
+        y = log(tan((pi / 4) + (y / 2)))
+        return (x*EARTH_RADIUS, y*EARTH_RADIUS)
+
+    def unproject(self, (x, y)):
+        """
+        Returns the coordinates from position in meters
+        """
+        lng = x/EARTH_RADIUS * RAD_TO_DEG
+        lat = 2 * atan(exp(y/EARTH_RADIUS)) - pi/2 * RAD_TO_DEG
+        return (lng, lat)

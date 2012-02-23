@@ -118,7 +118,7 @@ class MBTilesReader(Reader):
 
 class WMSReader(Reader):
     
-    PROJECTION = 'EPSG:4326'
+    PROJECTION = 'EPSG:3857'
     
     def __init__(self, url, layers, tilesize=None, **kwargs):
         super(WMSReader, self).__init__(tilesize)
@@ -141,17 +141,14 @@ class WMSReader(Reader):
         self.wmsParams[projectionKey] = self.PROJECTION
 
     def tile(self, z, x, y):
-        # Compute WGS84 bbox
         proj = GoogleProjection(self.tilesize, [z])
-        topleft = (x * self.tilesize, (y + 1) * self.tilesize)
-        bottomright = ((x + 1) * self.tilesize, y * self.tilesize)
-        nw = proj.fromPixelToLL(topleft, z)
-        se = proj.fromPixelToLL(bottomright, z)
-        bbox = ','.join(map(str, [nw[0], nw[1], se[0], se[1]]))
+        bbox = proj.tile_bbox((z, x, y))
+        bbox = proj.project(bbox[:2]) + proj.project(bbox[2:])
+        bbox = ','.join(map(str, bbox))
         # Build WMS request URL 
         encodedparams = urllib.urlencode(self.wmsParams)
         url = "%s?%s" % (self.url, encodedparams)
-        url += "&bbox=%s" % bbox
+        url += "&bbox=%s" % bbox   # commas are not encoded
         try:
             f = urllib.urlopen(url)
             header = f.info().typeheader
