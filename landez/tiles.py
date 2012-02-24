@@ -25,11 +25,11 @@ except ImportError:
 
 has_pil = False
 try:
-    import Image
+    import Image, ImageEnhance
     has_pil = True
 except ImportError:
     try:
-        from PIL import Image
+        from PIL import Image, ImageEnhance
         has_pil = True
     except ImportError:
         pass
@@ -184,14 +184,16 @@ class TilesManager(object):
         # Full path of tile
         return os.path.join(tile_abs_dir, tile_name)
 
-    def add_layer(self, tilemanager):
+    def add_layer(self, tilemanager, opacity=1.0):
         """
         Add a layer to be blended (alpha-composite) on top of the tile.
         tilemanager -- a `TileManager` instance
+        opacity -- transparency factor for compositing
         """
         assert has_pil, _("Cannot blend layers without python PIL")
         assert self.tile_size == tilemanager.tile_size, _("Cannot blend layers whose tile size differs")
-        self._layers.append(tilemanager)
+        assert 0 <= opacity <= 1, _("Opacity should be between 0.0 and 1.0")
+        self._layers.append((tilemanager, opacity))
 
     def prepare_tile(self, (z, x, y)):
         """
@@ -243,7 +245,7 @@ class TilesManager(object):
         result = Image.new("RGBA", (self.tile_size, self.tile_size))
         result.paste(background, (0, 0))
         
-        for layer in self._layers:
+        for (layer, opacity) in self._layers:
             try:
                 # Prepare tile of overlay, if available
                 layer.prepare_tile((z, x, y))
@@ -256,6 +258,8 @@ class TilesManager(object):
             overlay = overlay.convert("RGBA")
             r, g, b, a = overlay.split()
             overlay = Image.merge("RGB", (r, g, b))
+            a = ImageEnhance.Brightness(a).enhance(opacity)
+            overlay.putalpha(a)
             mask = Image.merge("L", (a,))
             result.paste(overlay, (0, 0), mask)
         result.save(tile_fullpath)

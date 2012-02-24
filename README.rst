@@ -87,8 +87,8 @@ From a WMS server
     mb = MBTilesBuilder(wms_server="http://yourserver.com/geoserver/wms", 
                         wms_layers=["ign:departements"], 
                         wms_options=dict(format="image/png", 
-                                         transparent=True,
-                                         filepath="dest.mbtiles"))
+                                         transparent=True),
+                        filepath="dest.mbtiles")
     mb.add_coverage(bbox=([-0.9853,43.6435.1126,44.0639]))
     mb.run()
 
@@ -126,6 +126,16 @@ For example, build a new MBTiles by blending tiles of a MBTiles on top of OpenSt
     mb = MBTilesBuilder(filepath="merged.mbtiles")
     overlay = TilesManager(mbtiles_file="carto.mbtiles")
     mb.add_layer(overlay)
+    mb.run()
+
+Or composite a WMS layer with OpenStreetMap using transparency (40%):
+
+:: 
+
+    ie = ImageExporter(wms_server="http://yourserver.com/geoserver/wms", 
+                       wms_layers=["img:orthophoto"])
+    overlay = TilesManager(remote=True)
+    mb.add_layer(overlay, 0.4)
     mb.run()
 
 
