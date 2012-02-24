@@ -46,14 +46,14 @@ class GoogleProjection(object):
             self.Ac.append(c)
             c *= 2
     
-    def fromLLtoPixel(self,ll,zoom):
+    def project_pixels(self,ll,zoom):
          d = self.zc[zoom]
          e = round(d[0] + ll[0] * self.Bc[zoom])
          f = minmax(sin(DEG_TO_RAD * ll[1]),-0.9999,0.9999)
          g = round(d[1] + 0.5*log((1+f)/(1-f))*-self.Cc[zoom])
          return (e,g)
      
-    def fromPixelToLL(self,px,zoom):
+    def unproject_pixels(self,px,zoom):
          e = self.zc[zoom]
          f = (px[0] - e[0])/self.Bc[zoom]
          g = (px[1] - e[1])/-self.Cc[zoom]
@@ -64,7 +64,7 @@ class GoogleProjection(object):
         """
         Returns a tuple of (z, x, y) 
         """
-        x, y = self.fromLLtoPixel(position, zoom)
+        x, y = self.project_pixels(position, zoom)
         return (zoom, int(x/self.tilesize), int(y/self.tilesize))
 
     def tile_bbox(self, (z, x, y)):
@@ -73,8 +73,8 @@ class GoogleProjection(object):
         """
         topleft = (x * self.tilesize, (y + 1) * self.tilesize)
         bottomright = ((x + 1) * self.tilesize, y * self.tilesize)
-        nw = self.fromPixelToLL(topleft, z)
-        se = self.fromPixelToLL(bottomright, z)
+        nw = self.unproject_pixels(topleft, z)
+        se = self.unproject_pixels(bottomright, z)
         return nw + se
 
     def project(self, (lng, lat)):
@@ -111,8 +111,8 @@ class GoogleProjection(object):
 
         l = []
         for z in self.levels:
-            px0 = self.fromLLtoPixel(ll0,z)
-            px1 = self.fromLLtoPixel(ll1,z)
+            px0 = self.project_pixels(ll0,z)
+            px1 = self.project_pixels(ll1,z)
             
             for x in range(int(px0[0]/self.tilesize),
                            int(px1[0]/self.tilesize)+1):
