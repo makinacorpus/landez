@@ -32,7 +32,7 @@ Building MBTiles files
 Remote tiles
 ------------
 
-Using a remote tile service (Cloudmade by default):
+Using a remote tile service (OpenStreetMap.org by default):
 ::
 
     import logging
