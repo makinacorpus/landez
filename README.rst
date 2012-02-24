@@ -1,9 +1,9 @@
-*Landez* manipulates tiles, builds MBTiles and arrange tiles together into single images.
+*Landez* manipulates tiles, builds MBTiles, does tiles compositing and arrange tiles together into single images.
 
 Tiles can either be obtained from a remote tile service URL, from a local Mapnik stylesheet,
 a WMS server or from MBTiles files.
 
-For building MBTiles, it uses *mbutil* from Mapbox https://github.com/mapbox/mbutil at the final stage.
+For building MBTiles, Landez embeds *mbutil* from Mapbox https://github.com/mapbox/mbutil at the final stage.
 The land covered is specified using a list of bounding boxes and zoom levels.
 
 
@@ -11,8 +11,9 @@ The land covered is specified using a list of bounding boxes and zoom levels.
 INSTALL
 =======
 
-*Landez* requires nothing but python remote mode (specifying a tiles URL), but 
-requires `mapnik` if the tiles are drawn locally. ::
+*Landez* is pure python and has no external dependency.
+
+However, it requires `mapnik` if the tiles are rendered locally. ::
 
     sudo aptitude install python-mapnik
 
@@ -83,18 +84,13 @@ From a WMS server
 -----------------
 ::
 
-    from landez.reader import WMSReader
-    
-    logging.basicConfig(level=logging.DEBUG)
-    
-    wms = WMSReader(url="http://yourserver.com/geoserver/wms", 
-                    layers=["ign:departements"], 
-                    format="image/png", 
-                    transparence=True)
-    
-    with open('test.png', 'wb') as f:
-        f.write(wms.tile(10, 510, 372))
-
+    mb = MBTilesBuilder(wms_server="http://yourserver.com/geoserver/wms", 
+                        wms_layers=["ign:departements"], 
+                        wms_options=dict(format="image/png", 
+                                         transparent=True,
+                                         filepath="dest.mbtiles"))
+    mb.add_coverage(bbox=([-0.9853,43.6435.1126,44.0639]))
+    mb.run()
 
 
 Manipulate tiles
@@ -121,7 +117,7 @@ Manipulate tiles
 Blend tiles together
 ====================
 
-Merge multiple sources of tiles (URL, MBTiles, Mapnik stylesheet) together. *(requires python PIL)*
+Merge multiple sources of tiles (URL, WMS, MBTiles, Mapnik stylesheet) together. *(requires python PIL)*
 
 For example, build a new MBTiles by blending tiles of a MBTiles on top of OpenStreetMap tiles :
 

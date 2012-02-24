@@ -14,7 +14,7 @@ from . import (DEFAULT_TILES_URL, DEFAULT_TILES_SUBDOMAINS,
                DEFAULT_TMP_DIR, DEFAULT_TILES_DIR, DEFAULT_FILEPATH,
                DEFAULT_TILE_SIZE, DOWNLOAD_RETRIES)
 from proj import GoogleProjection
-from reader import MBTilesReader, ExtractionError
+from reader import MBTilesReader, WMSReader, ExtractionError
 
 has_mapnik = False
 try:
@@ -68,7 +68,12 @@ class TilesManager(object):
         tile_size -- default tile size (default DEFAULT_TILE_SIZE)
         tiles_dir -- Local folder containing existing tiles, and 
                      where cached tiles will be stored (default DEFAULT_TILES_DIR)
+        
         mbtiles_file -- A MBTiles providing tiles (overrides ``tiles_url``)
+        
+        wms_server -- A WMS server url
+        wms_layers -- The list of layers to be requested
+        wms_options -- WMS parameters to be requested (see ``landez.reader.WMSReader``)
         """
         self.remote = kwargs.get('remote', True)
         self.stylefile = kwargs.get('stylefile')
@@ -82,10 +87,21 @@ class TilesManager(object):
         self.tile_size = kwargs.get('tile_size', DEFAULT_TILE_SIZE)
         
         self.mbtiles_file = kwargs.get('mbtiles_file')
+        self.wms_server = kwargs.get('wms_server')
+        self.wms_layers = kwargs.get('wms_layers', [])
+        self.wms_options = kwargs.get('wms_options', {})
         
+        self.reader = None
         basename = ''
         if self.mbtiles_file:
+            self.reader = MBTilesReader(self.mbtiles_file, self.tile_size)
             basename = os.path.basename(self.mbtiles_file)
+            self.remote = False
+        elif self.wms_server:
+            assert self.wms_layers, _("Request at least one layer")
+            self.reader = WMSReader(self.wms_server, self.wms_layers, 
+                                    self.tile_size, **self.wms_options)
+            basename = '-'.join(self.wms_layers)
             self.remote = False
         elif not self.remote:
             assert has_mapnik, _("Cannot render tiles without mapnik !")
@@ -197,7 +213,7 @@ class TilesManager(object):
                 logger.debug(_("Download tile %s") % tile_path)
                 self.download_tile(tile_abs_uri, z, x, y)
             else:
-                if self.mbtiles_file:
+                if self.reader:
                     logger.debug(_("Extract tile %s") % tile_path)
                     self.extract_tile(tile_abs_uri, z, x, y)
                 else:
@@ -243,13 +259,6 @@ class TilesManager(object):
             mask = Image.merge("L", (a,))
             result.paste(overlay, (0, 0), mask)
         result.save(tile_fullpath)
-
-    @property
-    def reader(self):
-        assert self.mbtiles_file, _("No MBTiles file defined.")
-        if not self._reader:
-            self._reader = MBTilesReader(self.mbtiles_file, self.tile_size)
-        return self._reader
 
     def extract_tile(self, output, z, x, y):
         """
