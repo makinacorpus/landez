@@ -1,11 +1,8 @@
 import os
 import re
-import urllib
 import shutil
 import logging
-import sqlite3
 from gettext import gettext as _
-from urlparse import urlparse
 import json
 
 from mbutil import disk_to_mbtiles
@@ -14,14 +11,8 @@ from . import (DEFAULT_TILES_URL, DEFAULT_TILES_SUBDOMAINS,
                DEFAULT_TMP_DIR, DEFAULT_TILES_DIR, DEFAULT_FILEPATH,
                DEFAULT_TILE_SIZE, DOWNLOAD_RETRIES)
 from proj import GoogleProjection
-from reader import MBTilesReader, ExtractionError
-
-has_mapnik = False
-try:
-    import mapnik
-    has_mapnik = True
-except ImportError:
-    pass
+from reader import (MBTilesReader, TileDownloader, WMSReader, 
+                    MapnikRenderer, ExtractionError, DownloadError)
 
 has_pil = False
 try:
@@ -38,16 +29,9 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
-class DownloadError(Exception):
-    """ Raised when download at tiles URL fails DOWNLOAD_RETRIES times """
-    pass
 
 class EmptyCoverageError(Exception):
     """ Raised when coverage (tiles list) is empty """
-    pass
-
-class InvalidCoverageError(Exception):
-    """ Raised when coverage bounds are invalid """
     pass
 
 
@@ -83,27 +67,27 @@ class TilesManager(object):
         
         self.mbtiles_file = kwargs.get('mbtiles_file')
         
-        basename = ''
+        self.wms_server = kwargs.get('wms_server')
+        self.wms_layers = kwargs.get('wms_layers', [])
+        self.wms_options = kwargs.get('wms_options', {})
+        
         if self.mbtiles_file:
-            basename = os.path.basename(self.mbtiles_file)
-            self.remote = False
+            self.reader = MBTilesReader(self.mbtiles_file, self.tile_size)
+        elif self.wms_server:
+            assert self.wms_layers, _("Request at least one layer")
+            self.reader = WMSReader(self.wms_server, self.wms_layers, 
+                                    self.tile_size, **self.wms_options)
         elif not self.remote:
             assert has_mapnik, _("Cannot render tiles without mapnik !")
             assert self.stylefile, _("A mapnik stylesheet is required")
-            basename = os.path.basename(self.stylefile)
+            self.reader = MapnikRenderer(self.stylefile, self.tile_size)
         else:
-            url = urlparse(self.tiles_url)
-            basename = url.netloc
-        basename = re.sub(r'[^a-z^A-Z^0-9]+', '', basename)
+            self.reader = TileDownloader(self.tiles_url, self.tile_size)
+
+        basename = re.sub(r'[^a-z^A-Z^0-9]+', '', self.reader.basename)
         self.tmp_dir = os.path.join(self.tmp_dir, basename)
         self.tiles_dir = os.path.join(self.tiles_dir, basename)
-        
-        self.proj = GoogleProjection(self.tile_size)
-        self._mapnik = None
-        self._prj = None
-        self._reader = None
         self._layers = []
-        
         # Number of tiles rendered/downloaded here
         self.rendered = 0
 
@@ -113,38 +97,8 @@ class TilesManager(object):
         box (minx, miny, maxx, maxy) at the specified zoom levels.
         Return a list of tuples (z,x,y)
         """
-        if len(bbox) != 4 or len(zoomlevels) == 0:
-            raise InvalidCoverageError(_("Wrong format of bounding box or zoom levels."))
-
-        xmin, ymin, xmax, ymax = bbox
-        if abs(xmin) > 180 or abs(xmax) > 180 or \
-           abs(ymin) > 90 or abs(ymax) > 90:
-            raise InvalidCoverageError(_("Some coordinates exceed [-180,+180], [-90, 90]."))
-        
-        if xmin >= xmax or ymin >= ymax:
-            raise InvalidCoverageError(_("Bounding box format is (xmin, ymin, xmax, ymax)"))
-        
-        if max(zoomlevels) >= self.proj.maxlevel:
-            self.proj = GoogleProjection(self.tile_size, zoomlevels)
-        
-        ll0 = (xmin, ymax)  # left top
-        ll1 = (xmax, ymin)  # right bottom
-
-        l = []
-        for z in zoomlevels:
-            px0 = self.proj.fromLLtoPixel(ll0,z)
-            px1 = self.proj.fromLLtoPixel(ll1,z)
-            
-            for x in range(int(px0[0]/self.tile_size),
-                           int(px1[0]/self.tile_size)+1):
-                if (x < 0) or (x >= 2**z):
-                    continue
-                for y in range(int(px0[1]/self.tile_size),
-                               int(px1[1]/self.tile_size)+1):
-                    if (y < 0) or (y >= 2**z):
-                        continue
-                    l.append((z, x, y))
-        return l
+        proj = GoogleProjection(self.tile_size, zoomlevels)
+        return proj.tileslist(bbox)
 
     def tile_file(self, (z, x, y)):
         """
@@ -193,16 +147,7 @@ class TilesManager(object):
         else:
             if not os.path.isdir(tile_abs_dir):
                 os.makedirs(tile_abs_dir)
-            if self.remote:
-                logger.debug(_("Download tile %s") % tile_path)
-                self.download_tile(tile_abs_uri, z, x, y)
-            else:
-                if self.mbtiles_file:
-                    logger.debug(_("Extract tile %s") % tile_path)
-                    self.extract_tile(tile_abs_uri, z, x, y)
-                else:
-                    logger.debug(_("Render tile %s") % tile_path)
-                    self.render_tile(tile_abs_uri, z, x, y)
+            self.reader.tile(z, x, y, tile_abs_uri)
             self.rendered += 1
 
         # Blend layers
@@ -243,90 +188,6 @@ class TilesManager(object):
             mask = Image.merge("L", (a,))
             result.paste(overlay, (0, 0), mask)
         result.save(tile_fullpath)
-
-    @property
-    def reader(self):
-        assert self.mbtiles_file, _("No MBTiles file defined.")
-        if not self._reader:
-            self._reader = MBTilesReader(self.mbtiles_file, self.tile_size)
-        return self._reader
-
-    def extract_tile(self, output, z, x, y):
-        """
-        Extract the specified tile from ``mbtiles_file``.
-        """
-        with open(output, 'wb') as f:
-            f.write(self.reader.tile(z, x, y))
-
-    def download_tile(self, output, z, x, y):
-        """
-        Download the specified tile from `tiles_url`
-        """
-        # Render each keyword in URL ({s}, {x}, {y}, {z}, {size} ... )
-        size = self.tile_size
-        s = self.tiles_subdomains[(x + y) % len(self.tiles_subdomains)];
-        try:
-            url = self.tiles_url.format(**locals())
-        except KeyError, e:
-            raise DownloadError(_("Unknown keyword %s in URL") % e)
-        
-        logger.debug(_("Retrieve tile at %s") % url)
-        r = DOWNLOAD_RETRIES
-        while r > 0:
-            try:
-                image = urllib.URLopener()
-                image.retrieve(url, output)
-                return  # Done.
-            except IOError, e:
-                logger.debug(_("Download error, retry (%s left). (%s)") % (r, e))
-                r -= 1
-        raise DownloadError
-
-    def render_tile(self, output, z, x, y):
-        """
-        Render the specified tile with Mapnik
-        """
-        # Calculate pixel positions of bottom-left & top-right
-        p0 = (x * self.tile_size, (y + 1) * self.tile_size)
-        p1 = ((x + 1) * self.tile_size, y * self.tile_size)
-        # Convert to LatLong (EPSG:4326)
-        l0 = self.proj.fromPixelToLL(p0, z)
-        l1 = self.proj.fromPixelToLL(p1, z)
-        return self.render(self.stylefile, 
-                           (l0[0], l0[1], l1[0], l1[1]), 
-                           output, 
-                           self.tile_size, self.tile_size)
-
-    def render(self, stylefile, bbox, output, width, height):
-        """
-        Render the specified bbox (minx, miny, maxx, maxy) with Mapnik
-        """
-        if not self._mapnik:
-            self._mapnik = mapnik.Map(width, height)
-            # Load style XML
-            mapnik.load_map(self._mapnik, stylefile, True)
-            # Obtain <Map> projection
-            self._prj = mapnik.Projection(self._mapnik.srs)
-
-        # Convert to map projection
-        assert len(bbox) == 4, _("Provide a bounding box tuple (minx, miny, maxx, maxy)")
-        c0 = self._prj.forward(mapnik.Coord(bbox[0],bbox[1]))
-        c1 = self._prj.forward(mapnik.Coord(bbox[2],bbox[3]))
-
-        # Bounding box for the tile
-        if hasattr(mapnik,'mapnik_version') and mapnik.mapnik_version() >= 800:
-            bbox = mapnik.Box2d(c0.x,c0.y, c1.x,c1.y)
-        else:
-            bbox = mapnik.Envelope(c0.x,c0.y, c1.x,c1.y)
-        
-        self._mapnik.resize(width, height)
-        self._mapnik.zoom_to_box(bbox)
-        self._mapnik.buffer_size = 128
-
-        # Render image with default Agg renderer
-        im = mapnik.Image(width, height)
-        mapnik.render(self._mapnik, im)
-        im.save(output, 'png256')
 
     def clean(self):
         """

@@ -1,4 +1,6 @@
 from math import pi, cos, sin, log, exp, atan, tan
+from gettext import gettext as _
+
 
 DEG_TO_RAD = pi/180
 RAD_TO_DEG = 180/pi
@@ -12,16 +14,27 @@ def minmax (a,b,c):
     return a
 
 
+class InvalidCoverageError(Exception):
+    """ Raised when coverage bounds are invalid """
+    pass
+
+
 class GoogleProjection(object):
+
+    NAME = 'EPSG:3857'
+
     """
     Transform Lon/Lat to Pixel within tiles
     Originally written by OSM team : http://svn.openstreetmap.org/applications/rendering/mapnik/generate_tiles.py     
     """
     def __init__(self, tilesize, levels = [0]):
+        if not levels:
+            raise InvalidCoverageError(_("Wrong zoom levels.")) 
         self.Bc = []
         self.Cc = []
         self.zc = []
         self.Ac = []
+        self.levels = levels
         self.maxlevel = max(levels) + 1
         self.tilesize = tilesize
         c = tilesize
@@ -81,3 +94,33 @@ class GoogleProjection(object):
         lng = x/EARTH_RADIUS * RAD_TO_DEG
         lat = 2 * atan(exp(y/EARTH_RADIUS)) - pi/2 * RAD_TO_DEG
         return (lng, lat)
+
+    def tileslist(self, bbox):
+        if len(bbox) != 4:
+            raise InvalidCoverageError(_("Wrong format of bounding box."))
+        xmin, ymin, xmax, ymax = bbox
+        if abs(xmin) > 180 or abs(xmax) > 180 or \
+           abs(ymin) > 90 or abs(ymax) > 90:
+            raise InvalidCoverageError(_("Some coordinates exceed [-180,+180], [-90, 90]."))
+        
+        if xmin >= xmax or ymin >= ymax:
+            raise InvalidCoverageError(_("Bounding box format is (xmin, ymin, xmax, ymax)"))
+
+        ll0 = (xmin, ymax)  # left top
+        ll1 = (xmax, ymin)  # right bottom
+
+        l = []
+        for z in self.levels:
+            px0 = self.fromLLtoPixel(ll0,z)
+            px1 = self.fromLLtoPixel(ll1,z)
+            
+            for x in range(int(px0[0]/self.tilesize),
+                           int(px1[0]/self.tilesize)+1):
+                if (x < 0) or (x >= 2**z):
+                    continue
+                for y in range(int(px0[1]/self.tilesize),
+                               int(px1[1]/self.tilesize)+1):
+                    if (y < 0) or (y >= 2**z):
+                        continue
+                    l.append((z, x, y))
+        return l
