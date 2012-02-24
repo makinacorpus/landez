@@ -205,6 +205,7 @@ class WMSReader(Reader):
         url += "&bbox=%s" % bbox   # commas are not encoded
         logger.debug(url)
         try:
+            logger.debug(_("Download '%s'") % url)
             f = urllib.urlopen(url)
             header = f.info().typeheader
             assert header == self.wmsParams['format'], "Invalid WMS response type : %s" % header
