@@ -9,7 +9,7 @@ from mbutil import disk_to_mbtiles
 
 from . import (DEFAULT_TILES_URL, DEFAULT_TILES_SUBDOMAINS, 
                DEFAULT_TMP_DIR, DEFAULT_TILES_DIR, DEFAULT_FILEPATH,
-               DEFAULT_TILE_SIZE, DOWNLOAD_RETRIES)
+               DEFAULT_TILE_SIZE)
 from proj import GoogleProjection
 from reader import (MBTilesReader, TileDownloader, WMSReader, 
                     MapnikRenderer, ExtractionError, DownloadError)
@@ -87,7 +87,7 @@ class TilesManager(object):
             assert self.stylefile, _("A mapnik stylesheet is required")
             self.reader = MapnikRenderer(self.stylefile, self.tile_size)
         else:
-            self.reader = TileDownloader(self.tiles_url, self.tile_size)
+            self.reader = TileDownloader(self.tiles_url, self.tiles_subdomains, self.tile_size)
 
         basename = re.sub(r'[^a-z^A-Z^0-9]+', '', self.reader.basename)
         self.tmp_dir = os.path.join(self.tmp_dir, basename)
@@ -320,7 +320,7 @@ class MBTilesBuilder(TilesManager):
         """
         super(MBTilesBuilder, self).clean()
         try:
-            for layer in self._layers:
+            for layer, opacity in self._layers:
                 layer.clean()
             if full:
                 logger.debug(_("Delete %s") % self.filepath)

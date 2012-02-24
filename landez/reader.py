@@ -17,7 +17,7 @@ except ImportError:
     pass
 
 
-from . import DEFAULT_TILE_SIZE
+from . import DEFAULT_TILE_SIZE, DOWNLOAD_RETRIES
 from proj import GoogleProjection
 
 
@@ -135,13 +135,14 @@ class MBTilesReader(Reader):
         topright = ((xmax + 1) * S, ymin * S)
         # Convert center to (lon, lat)
         proj = GoogleProjection(S, [zoom])  # WGS84
-        return proj.fromPixelToLL(bottomleft, zoom) + proj.fromPixelToLL(topright, zoom)
+        return proj.unproject_pixels(bottomleft, zoom) + proj.unproject_pixels(topright, zoom)
 
 
 class TileDownloader(Reader):
-    def __init__(self, url, tilesize=None):
+    def __init__(self, url, subdomains, tilesize=None):
         super(TileDownloader, self).__init__(tilesize)
         self.tiles_url = url
+        self.tiles_subdomains = subdomains
         parsed = urlparse(self.tiles_url)
         self.basename = parsed.netloc
 
@@ -149,9 +150,9 @@ class TileDownloader(Reader):
         """
         Download the specified tile from `tiles_url`
         """
-        logger.debug(_("Download tile %s") % (z, x, y))
+        logger.debug(_("Download tile %s") % ((z, x, y),))
         # Render each keyword in URL ({s}, {x}, {y}, {z}, {size} ... )
-        size = self.tile_size
+        size = self.tilesize
         s = self.tiles_subdomains[(x + y) % len(self.tiles_subdomains)];
         try:
             url = self.tiles_url.format(**locals())
@@ -203,7 +204,6 @@ class WMSReader(Reader):
         encodedparams = urllib.urlencode(self.wmsParams)
         url = "%s?%s" % (self.url, encodedparams)
         url += "&bbox=%s" % bbox   # commas are not encoded
-        logger.debug(url)
         try:
             logger.debug(_("Download '%s'") % url)
             f = urllib.urlopen(url)
