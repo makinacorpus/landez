@@ -463,7 +463,7 @@ class MBTilesBuilder(TilesManager):
         """
         super(MBTilesBuilder, self).clean()
         try:
-            for layer in self._layers:
+            for layer, opacity in self._layers:
                 layer.clean()
             if full:
                 logger.debug(_("Delete %s") % self.filepath)
