@@ -15,6 +15,7 @@ DEFAULT_FILEPATH = os.path.join(os.getcwd(), "tiles.mbtiles")
 DEFAULT_TILE_SIZE = 256
 """ Number of retries for remove tiles downloading """
 DOWNLOAD_RETRIES = 3
-
+""" Path to fonts for Mapnik rendering """
+TRUETYPE_FONTS_PATH = '/usr/share/fonts/truetype/'
 
 from tiles import *

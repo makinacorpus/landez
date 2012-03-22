@@ -12,7 +12,7 @@ from mbutil import disk_to_mbtiles
 
 from . import (DEFAULT_TILES_URL, DEFAULT_TILES_SUBDOMAINS, 
                DEFAULT_TMP_DIR, DEFAULT_TILES_DIR, DEFAULT_FILEPATH,
-               DEFAULT_TILE_SIZE, DOWNLOAD_RETRIES)
+               DEFAULT_TILE_SIZE, DOWNLOAD_RETRIES, TRUETYPE_FONTS_PATH)
 from proj import GoogleProjection
 from reader import MBTilesReader, WMSReader, ExtractionError
 
@@ -103,9 +103,10 @@ class TilesManager(object):
                                     self.tile_size, **self.wms_options)
             basename = '-'.join(self.wms_layers)
             self.remote = False
-        elif not self.remote:
+        elif self.stylefile:
             assert has_mapnik, _("Cannot render tiles without mapnik !")
             assert self.stylefile, _("A mapnik stylesheet is required")
+            self.remote = False
             basename = os.path.basename(self.stylefile)
         else:
             url = urlparse(self.tiles_url)
@@ -315,6 +316,12 @@ class TilesManager(object):
         Render the specified bbox (minx, miny, maxx, maxy) with Mapnik
         """
         if not self._mapnik:
+            # Register font paths
+            for family in ['ubuntu-font-family', 'msttcorefonts']:
+                mapnik.register_fonts(os.path.join(TRUETYPE_FONTS_PATH, family))
+            mapnik.register_fonts(os.path.join(os.path.expanduser('~'), '.fonts'))
+            logger.debug(_("Mapnik supported fonts are %s") % [f for f in mapnik.FontEngine.face_names()])
+            # Instantiate context
             self._mapnik = mapnik.Map(width, height)
             # Load style XML
             mapnik.load_map(self._mapnik, stylefile, True)
