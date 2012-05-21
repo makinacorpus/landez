@@ -11,12 +11,13 @@ from . import (DEFAULT_TILES_URL, DEFAULT_TILES_SUBDOMAINS,
                DEFAULT_TMP_DIR, DEFAULT_TILES_DIR, DEFAULT_FILEPATH,
                DEFAULT_TILE_SIZE)
 from proj import GoogleProjection
-from reader import (MBTilesReader, TileDownloader, WMSReader, 
-                    MapnikRenderer, ExtractionError, DownloadError)
+from sources import (MBTilesReader, TileDownloader, WMSReader, 
+                     MapnikRenderer, ExtractionError, DownloadError)
 
 has_pil = False
 try:
-    import Image, ImageEnhance
+    import Image
+    import ImageEnhance
     has_pil = True
 except ImportError:
     try:
@@ -43,23 +44,23 @@ class TilesManager(object):
         bounding box, download them, render them, extract them from other mbtiles...
         
         Keyword arguments:
-        remote -- use remote tiles (default True)
-        stylefile -- mapnik stylesheet file, only necessary if `remote` is `False`
         cache -- use a local cache to share tiles between runs (default True)
 
         tmp_dir -- temporary folder for gathering tiles (default DEFAULT_TMP_DIR)
-        tiles_url -- remote URL to download tiles (default DEFAULT_TILES_URL)
         tile_size -- default tile size (default DEFAULT_TILE_SIZE)
         tiles_dir -- Local folder containing existing tiles, and 
                      where cached tiles will be stored (default DEFAULT_TILES_DIR)
         
-        mbtiles_file -- A MBTiles providing tiles (overrides ``tiles_url``)
+        tiles_url -- remote URL to download tiles (*default DEFAULT_TILES_URL*)
         
-        wms_server -- A WMS server url
+        stylefile -- mapnik stylesheet file (*to render tiles locally*)
+        
+        mbtiles_file -- A MBTiles file providing tiles (*to extract its tiles*)
+        
+        wms_server -- A WMS server url (*to request tiles*)
         wms_layers -- The list of layers to be requested
         wms_options -- WMS parameters to be requested (see ``landez.reader.WMSReader``)
         """
-        self.remote = kwargs.get('remote', True)
         self.stylefile = kwargs.get('stylefile')
 
         self.tmp_dir = kwargs.get('tmp_dir', DEFAULT_TMP_DIR)
@@ -82,9 +83,7 @@ class TilesManager(object):
             assert self.wms_layers, _("Request at least one layer")
             self.reader = WMSReader(self.wms_server, self.wms_layers, 
                                     self.tile_size, **self.wms_options)
-        elif not self.remote:
-            assert has_mapnik, _("Cannot render tiles without mapnik !")
-            assert self.stylefile, _("A mapnik stylesheet is required")
+        elif self.stylefile:
             self.reader = MapnikRenderer(self.stylefile, self.tile_size)
         else:
             self.reader = TileDownloader(self.tiles_url, self.tiles_subdomains, self.tile_size)
@@ -144,7 +143,6 @@ class TilesManager(object):
         same temporary directory.
         """
         tile_dir, tile_name = self.tile_file((z, x, y))
-        tile_path = os.path.join(tile_dir, tile_name)
         tile_abs_uri = self.tile_fullpath((z, x, y))
         tile_abs_dir = os.path.dirname(tile_abs_uri)
         

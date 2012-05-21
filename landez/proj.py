@@ -1,4 +1,4 @@
-from math import pi, cos, sin, log, exp, atan, tan
+from math import pi, sin, log, exp, atan, tan
 from gettext import gettext as _
 
 

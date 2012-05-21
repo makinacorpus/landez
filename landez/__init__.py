@@ -18,4 +18,4 @@ DOWNLOAD_RETRIES = 3
 
 
 from tiles import *
-from reader import *
+from sources import *

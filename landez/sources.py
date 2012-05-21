@@ -37,7 +37,7 @@ class DownloadError(Exception):
     pass
 
 
-class Reader(object):
+class TileSource(object):
     def __init__(self, tilesize=None):
         if not tilesize:
             tilesize = DEFAULT_TILE_SIZE
@@ -48,7 +48,7 @@ class Reader(object):
         raise NotImplementedError
 
 
-class MBTilesReader(Reader):
+class MBTilesReader(TileSource):
     def __init__(self, filename, tilesize=None):
         super(MBTilesReader, self).__init__(tilesize)
         self.filename = filename
@@ -80,7 +80,7 @@ class MBTilesReader(Reader):
         return [int(row[0]) for row in rows]
 
     def tile(self, z, x, y, output):
-        logger.debug(_("Extract tile %s") % (z, x, y))
+        logger.debug(_("Extract tile %s") % ((z, x, y),))
         y_mercator = (2**int(z) - 1) - int(y)
         rows = self._query('''SELECT tile_data FROM tiles 
                               WHERE zoom_level=? AND tile_column=? AND tile_row=?;''', (z, x, y_mercator))
@@ -138,7 +138,7 @@ class MBTilesReader(Reader):
         return proj.unproject_pixels(bottomleft, zoom) + proj.unproject_pixels(topright, zoom)
 
 
-class TileDownloader(Reader):
+class TileDownloader(TileSource):
     def __init__(self, url, subdomains, tilesize=None):
         super(TileDownloader, self).__init__(tilesize)
         self.tiles_url = url
@@ -172,7 +172,7 @@ class TileDownloader(Reader):
         raise DownloadError
 
 
-class WMSReader(Reader):
+class WMSReader(TileSource):
     def __init__(self, url, layers, tilesize=None, **kwargs):
         super(WMSReader, self).__init__(tilesize)
         self.basename = '-'.join(layers)
@@ -211,13 +211,14 @@ class WMSReader(Reader):
             assert header == self.wmsParams['format'], "Invalid WMS response type : %s" % header
             with open(output, 'wb') as out:
                 out.write(f.read())
-        except (AssertionError, IOError), e:
+        except (AssertionError, IOError):
             raise ExtractionError
 
 
-class MapnikRenderer(Reader):
+class MapnikRenderer(TileSource):
     def __init__(self, stylefile, tilesize=None):
         super(MapnikRenderer, self).__init__(tilesize)
+        assert has_mapnik, _("Cannot render tiles without mapnik !")
         self.stylefile = stylefile
         self.basename = os.path.basename(self.stylefile)
         self._mapnik = None
@@ -226,14 +227,19 @@ class MapnikRenderer(Reader):
         """
         Render the specified tile with Mapnik
         """
-        logger.debug(_("Render tile %s") % (z, x, y))
+        logger.debug(_("Render tile %s") % ((z, x, y),))
+        proj = GoogleProjection(self.tilesize, [z])
         return self.render(proj.tile_bbox((z, x, y)), output)
 
-    def render(self, bbox, output):
+    def render(self, bbox, output, width=None, height=None):
         """
         Render the specified tile with Mapnik
         """
+        width = width or self.tilesize
+        width = height or self.tilesize
         if not self._mapnik:
+            if not width:
+                self.tile_size, 
             self._mapnik = mapnik.Map(width, height)
             # Load style XML
             mapnik.load_map(self._mapnik, self.stylefile, True)
