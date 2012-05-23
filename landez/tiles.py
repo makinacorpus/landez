@@ -99,9 +99,9 @@ class TilesManager(object):
         # Cache
         tiles_dir = kwargs.get('tiles_dir', DEFAULT_TMP_DIR)
         if kwargs.get('cache', True):
-            self.cache = Disk(self.reader.basename, tiles_dir)
+            self.cache = Disk(self.reader.basename, tiles_dir, extension=self._tile_extension)
         else:
-            self.cache = Dummy()
+            self.cache = Dummy(extension=self._tile_extension)
 
         # Overlays
         self._layers = []
@@ -282,6 +282,7 @@ class MBTilesBuilder(TilesManager):
         lat = self.bounds[1] + (self.bounds[3] - self.bounds[1])/2
         lon = self.bounds[0] + (self.bounds[2] - self.bounds[0])/2
         metadata = {}
+        metadata['format'] = self._tile_extension[1:]
         metadata['minzoom'] = self.zoomlevels[0]
         metadata['maxzoom'] = self.zoomlevels[-1]
         metadata['bounds'] = '%s,%s,%s,%s' % tuple(self.bounds)

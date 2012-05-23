@@ -8,11 +8,13 @@ logger = logging.getLogger(__name__)
 
 
 class Cache(object):
-    @classmethod
-    def tile_file(cls, (z, x, y)):
+    def __init__(self, **kwargs):
+        self.extension = kwargs.get('extension', '.png')
+
+    def tile_file(self, (z, x, y)):
         tile_dir = os.path.join("%s" % z, "%s" % x)
         y_mercator = (2**z - 1) - y
-        tile_name = "%s.png" % y_mercator
+        tile_name = "%s%s" % (y_mercator, self.extension)
         return tile_dir, tile_name
 
     def read(self, (z, x, y)):
@@ -61,7 +63,7 @@ class Disk(Cache):
         self.folder = os.path.join(self._basefolder, subfolder)
 
     def tile_fullpath(self, (z, x, y)):
-        tile_dir, tile_name = self.tile_file((z, x, y))
+        tile_dir, tile_name = self.tile_file((z, x, y), self.extension)
         tile_abs_dir = os.path.join(self.folder, tile_dir)
         return os.path.join(tile_abs_dir, tile_name)
 
