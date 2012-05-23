@@ -295,7 +295,10 @@ class MBTilesBuilder(TilesManager):
         # Package it! 
         logger.info(_("Build MBTiles file '%s'.") % self.filepath)
         disk_to_mbtiles(self.tmp_dir, self.filepath)
-        os.remove("%s-journal" % self.filepath)  # created by mbutil
+        try:
+            os.remove("%s-journal" % self.filepath)  # created by mbutil
+        except OSError, e:
+            logger.debug(e)
         self._clean_gather()
 
     def _gather(self, (z, x, y)):

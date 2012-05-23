@@ -16,7 +16,9 @@ setup(
     long_description=open(os.path.join(here, 'README.rst')).read() + '\n\n' +
                      open(os.path.join(here, 'CHANGES')).read(),
     license='LPGL, see LICENSE file.',
-    install_requires=[],
+    install_requires=[
+        'mbutil == 0.1.0',
+    ],
     packages=find_packages(),
     include_package_data=True,
     zip_safe=False,
