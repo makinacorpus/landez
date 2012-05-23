@@ -4,6 +4,7 @@ import unittest
 
 from tiles import (TilesManager, MBTilesBuilder, ImageExporter, EmptyCoverageError, DownloadError)
 from proj import InvalidCoverageError
+from cache import Cache
 
 
 class TestTilesManager(unittest.TestCase):
@@ -149,6 +150,15 @@ class TestImageExporter(unittest.TestCase):
         i = Image.open(output)
         self.assertEqual((1280, 1024), i.size)
         os.remove(output)
+
+
+class TestCache(unittest.TestCase):
+
+    def test_folder(self):
+        c = Cache('foo', '/tmp/')
+        self.assertEqual(c.folder, '/tmp/foo')
+        c.basename = 'bar'
+        self.assertEqual(c.folder, '/tmp/bar')
 
 
 if __name__ == '__main__':

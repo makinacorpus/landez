@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 class Cache(object):
     def __init__(self, basename, folder):
         self._basename = None
+        self._basefolder = folder
         self.folder = folder
         self.basename = basename
 
@@ -21,7 +22,7 @@ class Cache(object):
     def basename(self, basename):
         self._basename = basename
         subfolder = re.sub(r'[^a-z^A-Z^0-9]+', '', basename)
-        self.folder = os.path.join(self.folder, subfolder)
+        self.folder = os.path.join(self._basefolder, subfolder)
 
     @classmethod
     def tile_file(cls, (z, x, y)):
