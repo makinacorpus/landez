@@ -177,9 +177,7 @@ Manipulate tiles
     tiles = tm.tileslist(bbox=(-180.0, -90.0, 180.0, 90.0), 
                          zoomlevels=[0, 1])
     for tile in tiles:
-        tm._prepare_tile(tile)  # download, extract or take from cache
-        tile_path = tm.tile_fullpath(tile)
-        tilecontent = open(tile_path, 'r').read()
+        tilecontent = tm.tile(tile)  # download, extract or take from cache
         ...
 
 

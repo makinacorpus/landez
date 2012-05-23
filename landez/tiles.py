@@ -134,6 +134,14 @@ class TilesManager(object):
         self.cache.basename += tilemanager.cache.basename
         self._layers.append((tilemanager, opacity))
 
+    def tile(self, (z, x, y)):
+        """
+        Return the tile (binary) content of the tile.
+        """
+        self._prepare_tile(self, (z, x, y))
+        tile_path = self.cache.tile_fullpath((z, x, y))
+        return open(tile_path, 'r').read()
+
     def _prepare_tile(self, (z, x, y)):
         """
         Prepare missing tiles, seed the cache.
