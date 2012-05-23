@@ -19,6 +19,9 @@ setup(
     install_requires=[
         'mbutil == 0.1.0',
     ],
+    extras_require = {
+        'PIL':  ["Pillow == 1.7.7"],
+    },
     packages=find_packages(),
     include_package_data=True,
     zip_safe=False,
