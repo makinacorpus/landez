@@ -40,9 +40,9 @@ Using a remote tile service (OpenStreetMap.org by default):
 
     logging.basicConfig(level=logging.DEBUG)
         
-    mb = MBTilesBuilder(remote=True, cache=False)
+    mb = MBTilesBuilder(cache=False)
     mb.add_coverage(bbox=(-180.0, -90.0, 180.0, 90.0), 
-                        zoomlevels=[0, 1])
+                    zoomlevels=[0, 1])
     mb.run()
 
 Please respect `Tile usage policies <http://wiki.openstreetmap.org/wiki/Tile_usage_policy>`
@@ -92,26 +92,6 @@ From a WMS server
     mb.add_coverage(bbox=([-0.9853,43.6435.1126,44.0639]))
     mb.run()
 
-
-Manipulate tiles
-================
-
-::
-
-    from landez import MBTilesBuilder
-    
-    # From a TMS tile server
-    # tm = TilesManager(tiles_url="http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png")
-    
-    # From a MBTiles file
-    tm = TilesManager(mbtiles_file="yourfile.mbtiles")
-    
-    tiles = tm.tileslist(bbox=(-180.0, -90.0, 180.0, 90.0), 
-                         zoomlevels=[0, 1])
-    for tile in tiles:
-        tm.prepare_tile(tile)  # download, extract or take from cache
-        tile_path = tm.tile_fullpath(tile)
-        ...
 
 
 Blend tiles together
@@ -178,6 +158,29 @@ Extract MBTiles content
     
     # UTF-Grid tile
     print reader.grid(z, x, y, 'callback')
+
+
+
+Manipulate tiles
+================
+
+::
+
+    from landez import MBTilesBuilder
+    
+    # From a TMS tile server
+    # tm = TilesManager(tiles_url="http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png")
+    
+    # From a MBTiles file
+    tm = TilesManager(mbtiles_file="yourfile.mbtiles")
+    
+    tiles = tm.tileslist(bbox=(-180.0, -90.0, 180.0, 90.0), 
+                         zoomlevels=[0, 1])
+    for tile in tiles:
+        tm._prepare_tile(tile)  # download, extract or take from cache
+        tile_path = tm.tile_fullpath(tile)
+        tilecontent = open(tile_path, 'r').read()
+        ...
 
 
 =======
