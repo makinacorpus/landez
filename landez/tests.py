@@ -4,7 +4,7 @@ import unittest
 
 from tiles import (TilesManager, MBTilesBuilder, ImageExporter, EmptyCoverageError, DownloadError)
 from proj import InvalidCoverageError
-from cache import Cache
+from cache import Disk
 
 
 class TestTilesManager(unittest.TestCase):
@@ -31,55 +31,34 @@ class TestTilesManager(unittest.TestCase):
         self.assertRaises(InvalidCoverageError, mb.tileslist, (-90.0, 180.0, 180.0, 90.0), [0])
         self.assertRaises(InvalidCoverageError, mb.tileslist, (-30.0, -90.0, -50.0, 90.0), [0])
 
-    def test_clean(self):
-        mb = TilesManager()
-        self.assertEqual(mb.cache.folder, '/tmp/landez/stileopenstreetmaporg')
-        # Missing dir
-        self.assertFalse(os.path.exists(mb.cache.folder))
-        mb.clean()
-        # Empty dir
-        os.makedirs(mb.cache.folder)
-        self.assertTrue(os.path.exists(mb.cache.folder))
-        mb.clean()
-        self.assertFalse(os.path.exists(mb.cache.folder))
-
     def test_download_tile(self):
         mb = TilesManager(cache=False)
-        mb.clean()
         tile = (1, 1, 1)
-        
+                
         # Unknown URL keyword
         mb = TilesManager(tiles_url="http://{X}.tile.openstreetmap.org/{z}/{x}/{y}.png")
-        self.assertRaises(DownloadError, mb._prepare_tile, (1, 1, 1))
-        self.assertFalse(os.path.exists(mb.tile_fullpath(tile)))
+        self.assertRaises(DownloadError, mb.tile, (1, 1, 1))
         
         # With subdomain keyword
         mb = TilesManager(tiles_url="http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png")
-        mb._prepare_tile(tile)
-        output = mb.tile_fullpath(tile)
-        self.assertTrue(os.path.exists(output))
-        os.remove(output)
+        content = mb.tile(tile)
+        self.assertTrue(content is not None)
         
         # No subdomain keyword
         mb = TilesManager(tiles_url="http://tile.cloudmade.com/f1fe9c2761a15118800b210c0eda823c/1/{size}/{z}/{x}/{y}.png")
-        mb._prepare_tile(tile)
-        output = mb.tile_fullpath(tile)
-        self.assertTrue(os.path.exists(output))
-        os.remove(output)
+        content = mb.tile(tile)
+        self.assertTrue(content is not None)
         
         # Subdomain in available range
         mb = TilesManager(tiles_url="http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
                           tiles_subdomains = list("abc"))
         for y in range(3):
-            mb._prepare_tile((10, 0, y))
-            output = mb.tile_fullpath((10, 0, y))
-            self.assertTrue(os.path.exists(output))
-            os.remove(output)
+            content = mb.tile((10, 0, y))
+            self.assertTrue(content is not None)
         
         # Subdomain out of range
         mb = TilesManager(tiles_subdomains=list("abcz"))
-        self.assertRaises(DownloadError, mb._prepare_tile, (10, 1, 2))
-        self.assertFalse(os.path.exists(mb.tile_fullpath((10, 1, 2))))
+        self.assertRaises(DownloadError, mb.tile, (10, 1, 2))
 
 
 class TestMBTilesBuilder(unittest.TestCase):
@@ -113,7 +92,7 @@ class TestMBTilesBuilder(unittest.TestCase):
         mb = MBTilesBuilder()
         self.assertEqual(mb.tmp_dir, '/tmp/landez/tiles')
         self.assertFalse(os.path.exists(mb.tmp_dir))
-        mb._prepare_tile((0, 1, 1))
+        mb._gather((0, 1, 1))
         self.assertTrue(os.path.exists(mb.tmp_dir))
         mb._clean_gather()
         self.assertFalse(os.path.exists(mb.tmp_dir))
@@ -155,11 +134,22 @@ class TestImageExporter(unittest.TestCase):
 class TestCache(unittest.TestCase):
 
     def test_folder(self):
-        c = Cache('foo', '/tmp/')
+        c = Disk('foo', '/tmp/')
         self.assertEqual(c.folder, '/tmp/foo')
         c.basename = 'bar'
         self.assertEqual(c.folder, '/tmp/bar')
 
+    def test_clean(self):
+        mb = TilesManager()
+        self.assertEqual(mb.cache.folder, '/tmp/landez/stileopenstreetmaporg')
+        # Missing dir
+        self.assertFalse(os.path.exists(mb.cache.folder))
+        mb.cache.clean()
+        # Empty dir
+        os.makedirs(mb.cache.folder)
+        self.assertTrue(os.path.exists(mb.cache.folder))
+        mb.cache.clean()
+        self.assertFalse(os.path.exists(mb.cache.folder))
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)

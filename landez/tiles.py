@@ -3,13 +3,16 @@ import shutil
 import logging
 from gettext import gettext as _
 import json
+import mimetypes
+from tempfile import NamedTemporaryFile
 
 from mbutil import disk_to_mbtiles
 
 from . import (DEFAULT_TILES_URL, DEFAULT_TILES_SUBDOMAINS, 
-               DEFAULT_TMP_DIR, DEFAULT_FILEPATH, DEFAULT_TILE_SIZE)
+               DEFAULT_TMP_DIR, DEFAULT_FILEPATH, DEFAULT_TILE_SIZE,
+               DEFAULT_TILE_FORMAT)
 from proj import GoogleProjection
-from cache import Disk, Temporary
+from cache import Disk, Dummy
 from sources import (MBTilesReader, TileDownloader, WMSReader, 
                      MapnikRenderer, ExtractionError, DownloadError)
 
@@ -60,12 +63,16 @@ class TilesManager(object):
         wms_options -- WMS parameters to be requested (see ``landez.reader.WMSReader``)
 
         tile_size -- default tile size (default DEFAULT_TILE_SIZE)
+        tile_format -- default tile format (default DEFAULT_TILE_FORMAT)
         """
+        self.tile_size = kwargs.get('tile_size', DEFAULT_TILE_SIZE)
+        self.tile_format = kwargs.get('tile_format', DEFAULT_TILE_FORMAT)
+        self._tile_extension = mimetypes.guess_extension(self.tile_format, strict=False)
+        assert self._tile_extension, _("Unknown format %s") % self.tile_format
 
         # Tiles Download
         self.tiles_url = kwargs.get('tiles_url', DEFAULT_TILES_URL)
         self.tiles_subdomains = kwargs.get('tiles_subdomains', DEFAULT_TILES_SUBDOMAINS)
-        self.tile_size = kwargs.get('tile_size', DEFAULT_TILE_SIZE)
 
         # Tiles rendering
         self.stylefile = kwargs.get('stylefile')
@@ -92,9 +99,9 @@ class TilesManager(object):
         # Cache
         tiles_dir = kwargs.get('tiles_dir', DEFAULT_TMP_DIR)
         if kwargs.get('cache', True):
-            self.cache = Temporary(self.reader.basename, tiles_dir)
-        else:
             self.cache = Disk(self.reader.basename, tiles_dir)
+        else:
+            self.cache = Dummy()
 
         # Overlays
         self._layers = []
@@ -110,18 +117,6 @@ class TilesManager(object):
         proj = GoogleProjection(self.tile_size, zoomlevels)
         return proj.tileslist(bbox)
 
-    def tile_file(self, (z, x, y)):
-        """
-        Return folder (``z/x``) and name (``y.png``) for the specified tuple.
-        """
-        return self.cache.tile_file((z, x, y))
-
-    def tile_fullpath(self, (z, x, y)):
-        """
-        Return the full path to the tile for the specified tuple (either cache or temporary)
-        """
-        return self.cache.tile_fullpath((z, x, y))
-
     def add_layer(self, tilemanager, opacity=1.0):
         """
         Add a layer to be blended (alpha-composite) on top of the tile.
@@ -130,53 +125,42 @@ class TilesManager(object):
         """
         assert has_pil, _("Cannot blend layers without python PIL")
         assert self.tile_size == tilemanager.tile_size, _("Cannot blend layers whose tile size differs")
-        assert 0 <= opacity <= 1, _("Opacity should be between 0.0 and 1.0")
+        assert 0 <= opacity <= 1, _("Opacity should be between 0.0 (transparent) and 1.0 (opaque)")
         self.cache.basename += tilemanager.cache.basename
         self._layers.append((tilemanager, opacity))
 
     def tile(self, (z, x, y)):
         """
-        Return the tile (binary) content of the tile.
+        Return the tile (binary) content of the tile and seed the cache.
         """
-        self._prepare_tile(self, (z, x, y))
-        tile_path = self.cache.tile_fullpath((z, x, y))
-        return open(tile_path, 'r').read()
-
-    def _prepare_tile(self, (z, x, y)):
-        """
-        Prepare missing tiles, seed the cache.
-        """
-        tile_abs_uri = self.cache.tile_fullpath((z, x, y))
         output = self.cache.read((z, x, y))
         if output is None:
             output = self.reader.tile(z, x, y)
+            # Blend layers
+            if len(self._layers) > 0:
+                logger.debug(_("Will blend %s layer(s)") % len(self._layers))
+                output = self._blend_layers(output, (z, x, y))
             self.cache.save(output, (z, x, y))
             self.rendered += 1
-        # Blend layers
-        if len(self._layers) > 0:
-            logger.debug(_("Will blend %s layer(s) into %s") % (len(self._layers),
-                                                                tile_abs_uri))
-            self._blend_layers(tile_abs_uri, (z, x, y))
+        return output
 
-    def _blend_layers(self, tile_fullpath, (z, x, y)):
+    def _blend_layers(self, imagecontent, (z, x, y)):
         """
         Merge tiles of all layers into the specified tile path
         """
-        # Background first
-        background = Image.open(tile_fullpath)
-        result = Image.new("RGBA", (self.tile_size, self.tile_size))
-        result.paste(background, (0, 0))
-        
+        result_tmp = NamedTemporaryFile(delete=False, suffix=self._tile_extension)
+        result_tmp.write(imagecontent)
+        result_tmp.close()
+        result = Image.open(result_tmp.name)
+        # Paste each layer
         for (layer, opacity) in self._layers:
             try:
                 # Prepare tile of overlay, if available
-                layer._prepare_tile((z, x, y))
+                overlay = self._tile_image((z, x, y))
             except (DownloadError, ExtractionError), e:
                 logger.warn(e)
                 continue
             # Extract alpha mask
-            tile_over = layer.tile_fullpath((z, x, y))
-            overlay = Image.open(tile_over)
             overlay = overlay.convert("RGBA")
             r, g, b, a = overlay.split()
             overlay = Image.merge("RGB", (r, g, b))
@@ -184,15 +168,27 @@ class TilesManager(object):
             overlay.putalpha(a)
             mask = Image.merge("L", (a,))
             result.paste(overlay, (0, 0), mask)
-        result.save(tile_fullpath)
+        # Read result
+        result.save(result_tmp.name)
+        content = open(result_tmp.name).read()
+        os.unlink(result_tmp.name)
+        return content
 
-    def clean(self):
+    def _tile_image(self, (z, x, y), delete=True):
         """
-        Clean cache of all layers
+        Tile binary content as PIL Image.
+        
+        delete -- if set to False, the temporary image with not be deleted
         """
-        for layer, opacity in self._layers:
-            layer.clean()
-        self.cache.clean()
+        tilecontent = self.tile((z, x, y))
+        tile_tmp = NamedTemporaryFile(delete=False, suffix=self._tile_extension)
+        tile_tmp.write(tilecontent)
+        tile_tmp.close()
+        path = tile_tmp.name
+        img = Image.open(path)
+        if delete:
+            os.unlink(path)
+        return img
 
 
 class MBTilesBuilder(TilesManager):
@@ -277,7 +273,7 @@ class MBTilesBuilder(TilesManager):
         # Go through whole list of tiles and gather them in tmp_dir
         self.rendered = 0
         for (z, x, y) in tileslist:
-            self._prepare_tile((z, x, y))
+            self._gather((z, x, y))
 
         logger.debug(_("%s tiles were missing.") % self.rendered)
 
@@ -301,19 +297,15 @@ class MBTilesBuilder(TilesManager):
         disk_to_mbtiles(self.tmp_dir, self.filepath)
         os.remove("%s-journal" % self.filepath)  # created by mbutil
         self._clean_gather()
-        self.clean()
-
-    def _prepare_tile(self, (z, x, y)):
-        super(MBTilesBuilder, self)._prepare_tile((z, x, y))
-        self._gather((z, x, y))
 
     def _gather(self, (z, x, y)):
-        tile_abs_uri = self.cache.tile_fullpath((z, x, y))
         tile_dir, tile_name = self.cache.tile_file((z, x, y))
         tmp_dir = os.path.join(self.tmp_dir, tile_dir)
         if not os.path.isdir(tmp_dir):
             os.makedirs(tmp_dir)
-        shutil.copy(tile_abs_uri, tmp_dir)
+        tilecontent = self.tile((z, x, y))
+        with open(os.path.join(tmp_dir, tile_name), 'wb') as f:
+            f.write(tilecontent)
 
     def _clean_gather(self):
         logger.debug(_("Clean-up %s") % self.tmp_dir)
@@ -369,9 +361,6 @@ class ImageExporter(TilesManager):
         for i, row in enumerate(grid):
             for j, (x, y) in enumerate(row):
                 offset = (j * self.tile_size, i * self.tile_size)
-                tile_path = self.tile_fullpath((zoomlevel, x, y))
-                self._prepare_tile((zoomlevel, x, y))
-                img = Image.open(tile_path)
+                img = self._tile_image((zoomlevel, x, y))
                 result.paste(img, offset)
         result.save(imagepath)
-        self.clean()

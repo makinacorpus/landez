@@ -11,6 +11,8 @@ DEFAULT_TMP_DIR = os.path.join(tempfile.gettempdir(), 'landez')
 DEFAULT_FILEPATH = os.path.join(os.getcwd(), "tiles.mbtiles")
 """ Default tile size in pixels (*useless* in remote rendering) """
 DEFAULT_TILE_SIZE = 256
+""" Default tile format (mime-type) """
+DEFAULT_TILE_FORMAT = 'image/png'
 """ Number of retries for remove tiles downloading """
 DOWNLOAD_RETRIES = 3
 """ Path to fonts for Mapnik rendering """

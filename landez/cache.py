@@ -8,7 +8,43 @@ logger = logging.getLogger(__name__)
 
 
 class Cache(object):
+    @classmethod
+    def tile_file(cls, (z, x, y)):
+        tile_dir = os.path.join("%s" % z, "%s" % x)
+        y_mercator = (2**z - 1) - y
+        tile_name = "%s.png" % y_mercator
+        return tile_dir, tile_name
+
+    def read(self, (z, x, y)):
+        raise NotImplementedError
+
+    def save(self, body, (z, x, y)):
+        raise NotImplementedError
+
+    def remove(self, (z, x, y)):
+        raise NotImplementedError
+
+    def clean(self):
+        raise NotImplementedError
+
+
+class Dummy(Cache):
+    def read(self, (z, x, y)):
+        return None
+
+    def save(self, body, (z, x, y)):
+        pass
+
+    def remove(self, (z, x, y)):
+        pass
+
+    def clean(self):
+        pass
+
+
+class Disk(Cache):
     def __init__(self, basename, folder):
+        super(Disk, self).__init__()
         self._basename = None
         self._basefolder = folder
         self.folder = folder
@@ -24,23 +60,10 @@ class Cache(object):
         subfolder = re.sub(r'[^a-z^A-Z^0-9]+', '', basename)
         self.folder = os.path.join(self._basefolder, subfolder)
 
-    @classmethod
-    def tile_file(cls, (z, x, y)):
-        tile_dir = os.path.join("%s" % z, "%s" % x)
-        y_mercator = (2**z - 1) - y
-        tile_name = "%s.png" % y_mercator
-        return tile_dir, tile_name
-    
     def tile_fullpath(self, (z, x, y)):
         tile_dir, tile_name = self.tile_file((z, x, y))
         tile_abs_dir = os.path.join(self.folder, tile_dir)
         return os.path.join(tile_abs_dir, tile_name)
-
-    def read(self, (z, x, y)):
-        raise NotImplementedError
-
-    def save(self, body, (z, x, y)):
-        raise NotImplementedError
 
     def remove(self, (z, x, y)):
         tile_abs_uri = self.tile_fullpath((z, x, y))
@@ -55,11 +78,6 @@ class Cache(object):
             except OSError:
                 break
 
-    def clean(self):
-        raise NotImplementedError
-
-
-class Disk(Cache):
     def read(self, (z, x, y)):
         tile_abs_uri = self.tile_fullpath((z, x, y))
         if os.path.exists(tile_abs_uri):
@@ -76,13 +94,8 @@ class Disk(Cache):
         open(tile_abs_uri, 'wb').write(body)
 
     def clean(self):
-        pass
-
-
-class Temporary(Disk):
-    def clean(self):
         logger.debug(_("Clean-up %s") % self.folder)
         try:
             shutil.rmtree(self.folder)
         except OSError:
-            logger.warn(_("%s was missing.") % self.folder)
+            logger.warn(_("%s was missing or read-only.") % self.folder)
