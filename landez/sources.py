@@ -1,3 +1,4 @@
+import os
 import zlib
 import sqlite3
 import logging
@@ -5,8 +6,19 @@ import json
 from gettext import gettext as _
 from pkg_resources import parse_version
 import urllib
+from urlparse import urlparse
+from tempfile import NamedTemporaryFile
 
-from . import DEFAULT_TILE_SIZE
+
+has_mapnik = False
+try:
+    import mapnik
+    has_mapnik = True
+except ImportError:
+    pass
+
+
+from . import DEFAULT_TILE_SIZE, DOWNLOAD_RETRIES
 from proj import GoogleProjection
 
 
@@ -21,18 +33,30 @@ class InvalidFormatError(Exception):
     """ Raised when reading of MBTiles content has failed """
     pass
 
+class DownloadError(Exception):
+    """ Raised when download at tiles URL fails DOWNLOAD_RETRIES times """
+    pass
 
-class Reader(object):
+
+class TileSource(object):
     def __init__(self, tilesize=None):
         if not tilesize:
             tilesize = DEFAULT_TILE_SIZE
         self.tilesize = tilesize
+        self.basename = ''
+
+    def tile(self, z, x, y):
+        raise NotImplementedError
+
+    def metadata(self):
+        return dict()
 
 
-class MBTilesReader(Reader):
+class MBTilesReader(TileSource):
     def __init__(self, filename, tilesize=None):
         super(MBTilesReader, self).__init__(tilesize)
         self.filename = filename
+        self.basename = os.path.basename(self.filename)
         self._con = None
         self._cur = None
 
@@ -60,6 +84,7 @@ class MBTilesReader(Reader):
         return [int(row[0]) for row in rows]
 
     def tile(self, z, x, y):
+        logger.debug(_("Extract tile %s") % ((z, x, y),))
         y_mercator = (2**int(z) - 1) - int(y)
         rows = self._query('''SELECT tile_data FROM tiles 
                               WHERE zoom_level=? AND tile_column=? AND tile_row=?;''', (z, x, y_mercator))
@@ -113,15 +138,45 @@ class MBTilesReader(Reader):
         topright = ((xmax + 1) * S, ymin * S)
         # Convert center to (lon, lat)
         proj = GoogleProjection(S, [zoom])  # WGS84
-        return proj.fromPixelToLL(bottomleft, zoom) + proj.fromPixelToLL(topright, zoom)
+        return proj.unproject_pixels(bottomleft, zoom) + proj.unproject_pixels(topright, zoom)
 
 
-class WMSReader(Reader):
-    
-    PROJECTION = 'EPSG:3857'
-    
+class TileDownloader(TileSource):
+    def __init__(self, url, subdomains, tilesize=None):
+        super(TileDownloader, self).__init__(tilesize)
+        self.tiles_url = url
+        self.tiles_subdomains = subdomains
+        parsed = urlparse(self.tiles_url)
+        self.basename = parsed.netloc
+
+    def tile(self, z, x, y):
+        """
+        Download the specified tile from `tiles_url`
+        """
+        logger.debug(_("Download tile %s") % ((z, x, y),))
+        # Render each keyword in URL ({s}, {x}, {y}, {z}, {size} ... )
+        size = self.tilesize
+        s = self.tiles_subdomains[(x + y) % len(self.tiles_subdomains)];
+        try:
+            url = self.tiles_url.format(**locals())
+        except KeyError, e:
+            raise DownloadError(_("Unknown keyword %s in URL") % e)
+        
+        logger.debug(_("Retrieve tile at %s") % url)
+        r = DOWNLOAD_RETRIES
+        while r > 0:
+            try:
+                return urllib.urlopen(url).read()
+            except IOError, e:
+                logger.debug(_("Download error, retry (%s left). (%s)") % (r, e))
+                r -= 1
+        raise DownloadError(_("Cannot download URL %s") % url)
+
+
+class WMSReader(TileSource):
     def __init__(self, url, layers, tilesize=None, **kwargs):
         super(WMSReader, self).__init__(tilesize)
+        self.basename = '-'.join(layers)
         self.url = url
         self.wmsParams = dict(
             service='WMS',
@@ -138,9 +193,10 @@ class WMSReader(Reader):
         projectionKey = 'srs'
         if parse_version(self.wmsParams['version']) >= parse_version('1.3'):
             projectionKey = 'crs'
-        self.wmsParams[projectionKey] = self.PROJECTION
+        self.wmsParams[projectionKey] = GoogleProjection.NAME
 
     def tile(self, z, x, y):
+        logger.debug(_("Request WMS tile %s") % ((z, x, y),))
         proj = GoogleProjection(self.tilesize, [z])
         bbox = proj.tile_bbox((z, x, y))
         bbox = proj.project(bbox[:2]) + proj.project(bbox[2:])
@@ -155,5 +211,62 @@ class WMSReader(Reader):
             header = f.info().typeheader
             assert header == self.wmsParams['format'], "Invalid WMS response type : %s" % header
             return f.read()
-        except (AssertionError, IOError), e:
+        except (AssertionError, IOError):
             raise ExtractionError
+
+
+class MapnikRenderer(TileSource):
+    def __init__(self, stylefile, tilesize=None):
+        super(MapnikRenderer, self).__init__(tilesize)
+        assert has_mapnik, _("Cannot render tiles without mapnik !")
+        self.stylefile = stylefile
+        self.basename = os.path.basename(self.stylefile)
+        self._mapnik = None
+
+    def tile(self, z, x, y):
+        """
+        Render the specified tile with Mapnik
+        """
+        logger.debug(_("Render tile %s") % ((z, x, y),))
+        proj = GoogleProjection(self.tilesize, [z])
+        return self.render(proj.tile_bbox((z, x, y)))
+
+    def render(self, bbox, output, width=None, height=None):
+        """
+        Render the specified tile with Mapnik
+        """
+        width = width or self.tilesize
+        width = height or self.tilesize
+        if not self._mapnik:
+            if not width:
+                self.tile_size, 
+            self._mapnik = mapnik.Map(width, height)
+            # Load style XML
+            mapnik.load_map(self._mapnik, self.stylefile, True)
+            # Obtain <Map> projection
+            self._prj = mapnik.Projection(self._mapnik.srs)
+
+        # Convert to map projection
+        assert len(bbox) == 4, _("Provide a bounding box tuple (minx, miny, maxx, maxy)")
+        c0 = self._prj.forward(mapnik.Coord(bbox[0], bbox[1]))
+        c1 = self._prj.forward(mapnik.Coord(bbox[2], bbox[3]))
+
+        # Bounding box for the tile
+        if hasattr(mapnik,'mapnik_version') and mapnik.mapnik_version() >= 800:
+            bbox = mapnik.Box2d(c0.x, c0.y, c1.x, c1.y)
+        else:
+            bbox = mapnik.Envelope(c0.x, c0.y, c1.x, c1.y)
+        
+        self._mapnik.resize(width, height)
+        self._mapnik.zoom_to_box(bbox)
+        self._mapnik.buffer_size = 128
+
+        # Render image with default Agg renderer
+        tmpfile = NamedTemporaryFile(delete=False)
+        im = mapnik.Image(width, height)
+        mapnik.render(self._mapnik, im)
+        im.save(tmpfile.name, 'png256')  # TODO: mapnik output only to file?
+        tmpfile.close()
+        content = open(tmpfile.name).read()
+        os.unlink(tmpfile.name)
+        return content
