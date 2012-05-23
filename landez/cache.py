@@ -45,8 +45,8 @@ class Dummy(Cache):
 
 
 class Disk(Cache):
-    def __init__(self, basename, folder):
-        super(Disk, self).__init__()
+    def __init__(self, basename, folder, **kwargs):
+        super(Disk, self).__init__(**kwargs)
         self._basename = None
         self._basefolder = folder
         self.folder = folder
@@ -63,7 +63,7 @@ class Disk(Cache):
         self.folder = os.path.join(self._basefolder, subfolder)
 
     def tile_fullpath(self, (z, x, y)):
-        tile_dir, tile_name = self.tile_file((z, x, y), self.extension)
+        tile_dir, tile_name = self.tile_file((z, x, y))
         tile_abs_dir = os.path.join(self.folder, tile_dir)
         return os.path.join(tile_abs_dir, tile_name)
 
