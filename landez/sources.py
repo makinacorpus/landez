@@ -7,6 +7,7 @@ from gettext import gettext as _
 from pkg_resources import parse_version
 import urllib
 from urlparse import urlparse
+from tempfile import NamedTemporaryFile
 
 
 has_mapnik = False
@@ -44,8 +45,11 @@ class TileSource(object):
         self.tilesize = tilesize
         self.basename = ''
 
-    def tile(self, z, x, y, output):
+    def tile(self, z, x, y):
         raise NotImplementedError
+
+    def metadata(self):
+        return dict()
 
 
 class MBTilesReader(TileSource):
@@ -79,7 +83,7 @@ class MBTilesReader(TileSource):
         rows = self._query('SELECT DISTINCT(zoom_level) FROM tiles ORDER BY zoom_level')
         return [int(row[0]) for row in rows]
 
-    def tile(self, z, x, y, output):
+    def tile(self, z, x, y):
         logger.debug(_("Extract tile %s") % ((z, x, y),))
         y_mercator = (2**int(z) - 1) - int(y)
         rows = self._query('''SELECT tile_data FROM tiles 
@@ -87,8 +91,7 @@ class MBTilesReader(TileSource):
         t = rows.fetchone()
         if not t:
             raise ExtractionError(_("Could not extract tile %s from %s") % ((z, x, y), self.filename))
-        with open(output, 'wb') as out:
-            out.write(t[0])
+        return t[0]
 
     def grid(self, z, x, y, callback=None):
         if not callback:
@@ -146,7 +149,7 @@ class TileDownloader(TileSource):
         parsed = urlparse(self.tiles_url)
         self.basename = parsed.netloc
 
-    def tile(self, z, x, y, output):
+    def tile(self, z, x, y):
         """
         Download the specified tile from `tiles_url`
         """
@@ -163,13 +166,11 @@ class TileDownloader(TileSource):
         r = DOWNLOAD_RETRIES
         while r > 0:
             try:
-                image = urllib.URLopener()
-                image.retrieve(url, output)
-                return  # Done.
+                return urllib.urlopen(url).read()
             except IOError, e:
                 logger.debug(_("Download error, retry (%s left). (%s)") % (r, e))
                 r -= 1
-        raise DownloadError
+        raise DownloadError(_("Cannot download URL %s") % url)
 
 
 class WMSReader(TileSource):
@@ -194,7 +195,7 @@ class WMSReader(TileSource):
             projectionKey = 'crs'
         self.wmsParams[projectionKey] = GoogleProjection.NAME
 
-    def tile(self, z, x, y, output):
+    def tile(self, z, x, y):
         logger.debug(_("Request WMS tile %s") % ((z, x, y),))
         proj = GoogleProjection(self.tilesize, [z])
         bbox = proj.tile_bbox((z, x, y))
@@ -209,8 +210,7 @@ class WMSReader(TileSource):
             f = urllib.urlopen(url)
             header = f.info().typeheader
             assert header == self.wmsParams['format'], "Invalid WMS response type : %s" % header
-            with open(output, 'wb') as out:
-                out.write(f.read())
+            return f.read()
         except (AssertionError, IOError):
             raise ExtractionError
 
@@ -223,13 +223,13 @@ class MapnikRenderer(TileSource):
         self.basename = os.path.basename(self.stylefile)
         self._mapnik = None
 
-    def tile(self, z, x, y, output):
+    def tile(self, z, x, y):
         """
         Render the specified tile with Mapnik
         """
         logger.debug(_("Render tile %s") % ((z, x, y),))
         proj = GoogleProjection(self.tilesize, [z])
-        return self.render(proj.tile_bbox((z, x, y)), output)
+        return self.render(proj.tile_bbox((z, x, y)))
 
     def render(self, bbox, output, width=None, height=None):
         """
@@ -262,6 +262,11 @@ class MapnikRenderer(TileSource):
         self._mapnik.buffer_size = 128
 
         # Render image with default Agg renderer
+        tmpfile = NamedTemporaryFile(delete=False)
         im = mapnik.Image(width, height)
         mapnik.render(self._mapnik, im)
-        im.save(output, 'png256')
+        im.save(tmpfile.name, 'png256')  # TODO: mapnik output only to file?
+        tmpfile.close()
+        content = open(tmpfile.name).read()
+        os.unlink(tmpfile.name)
+        return content

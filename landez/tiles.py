@@ -1,5 +1,4 @@
 import os
-import re
 import shutil
 import logging
 from gettext import gettext as _
@@ -8,9 +7,9 @@ import json
 from mbutil import disk_to_mbtiles
 
 from . import (DEFAULT_TILES_URL, DEFAULT_TILES_SUBDOMAINS, 
-               DEFAULT_TMP_DIR, DEFAULT_TILES_DIR, DEFAULT_FILEPATH,
-               DEFAULT_TILE_SIZE)
+               DEFAULT_TMP_DIR, DEFAULT_FILEPATH, DEFAULT_TILE_SIZE)
 from proj import GoogleProjection
+from cache import Disk, Temporary
 from sources import (MBTilesReader, TileDownloader, WMSReader, 
                      MapnikRenderer, ExtractionError, DownloadError)
 
@@ -46,10 +45,9 @@ class TilesManager(object):
         Keyword arguments:
         cache -- use a local cache to share tiles between runs (default True)
 
-        tmp_dir -- temporary folder for gathering tiles (default DEFAULT_TMP_DIR)
-        tile_size -- default tile size (default DEFAULT_TILE_SIZE)
-        tiles_dir -- Local folder containing existing tiles, and 
-                     where cached tiles will be stored (default DEFAULT_TILES_DIR)
+        tiles_dir -- Local folder containing existing tiles if cache is 
+                     True, or where temporary tiles will be written otherwise
+                     (default DEFAULT_TMP_DIR)
         
         tiles_url -- remote URL to download tiles (*default DEFAULT_TILES_URL*)
         
@@ -60,27 +58,30 @@ class TilesManager(object):
         wms_server -- A WMS server url (*to request tiles*)
         wms_layers -- The list of layers to be requested
         wms_options -- WMS parameters to be requested (see ``landez.reader.WMSReader``)
-        """
-        self.stylefile = kwargs.get('stylefile')
 
-        self.tmp_dir = kwargs.get('tmp_dir', DEFAULT_TMP_DIR)
-        
-        self.cache = kwargs.get('cache', True)
-        self.tiles_dir = kwargs.get('tiles_dir', DEFAULT_TILES_DIR)
+        tile_size -- default tile size (default DEFAULT_TILE_SIZE)
+        """
+
+        # Tiles Download
         self.tiles_url = kwargs.get('tiles_url', DEFAULT_TILES_URL)
         self.tiles_subdomains = kwargs.get('tiles_subdomains', DEFAULT_TILES_SUBDOMAINS)
         self.tile_size = kwargs.get('tile_size', DEFAULT_TILE_SIZE)
-        
+
+        # Tiles rendering
+        self.stylefile = kwargs.get('stylefile')
+
+        # MBTiles reading
         self.mbtiles_file = kwargs.get('mbtiles_file')
-        
+
+        # WMS requesting
         self.wms_server = kwargs.get('wms_server')
         self.wms_layers = kwargs.get('wms_layers', [])
         self.wms_options = kwargs.get('wms_options', {})
-        
+
         if self.mbtiles_file:
             self.reader = MBTilesReader(self.mbtiles_file, self.tile_size)
         elif self.wms_server:
-            assert self.wms_layers, _("Request at least one layer")
+            assert self.wms_layers, _("Requires at least one layer (see ``wms_layers`` parameter)")
             self.reader = WMSReader(self.wms_server, self.wms_layers, 
                                     self.tile_size, **self.wms_options)
         elif self.stylefile:
@@ -88,9 +89,14 @@ class TilesManager(object):
         else:
             self.reader = TileDownloader(self.tiles_url, self.tiles_subdomains, self.tile_size)
 
-        basename = re.sub(r'[^a-z^A-Z^0-9]+', '', self.reader.basename)
-        self.tmp_dir = os.path.join(self.tmp_dir, basename)
-        self.tiles_dir = os.path.join(self.tiles_dir, basename)
+        # Cache
+        tiles_dir = kwargs.get('tiles_dir', DEFAULT_TMP_DIR)
+        if kwargs.get('cache', True):
+            self.cache = Temporary(self.reader.basename, tiles_dir)
+        else:
+            self.cache = Disk(self.reader.basename, tiles_dir)
+
+        # Overlays
         self._layers = []
         # Number of tiles rendered/downloaded here
         self.rendered = 0
@@ -108,23 +114,13 @@ class TilesManager(object):
         """
         Return folder (``z/x``) and name (``y.png``) for the specified tuple.
         """
-        tile_dir = os.path.join("%s" % z, "%s" % x)
-        y_mercator = (2**z - 1) - y
-        tile_name = "%s.png" % y_mercator
-        return tile_dir, tile_name
+        return self.cache.tile_file((z, x, y))
 
     def tile_fullpath(self, (z, x, y)):
         """
         Return the full path to the tile for the specified tuple (either cache or temporary)
         """
-        tile_dir, tile_name = self.tile_file((z, x, y))
-        # Folder of tile is either cache or temporary
-        if self.cache:
-            tile_abs_dir = os.path.join(self.tiles_dir, tile_dir)
-        else:
-            tile_abs_dir = os.path.join(self.tmp_dir, tile_dir)
-        # Full path of tile
-        return os.path.join(tile_abs_dir, tile_name)
+        return self.cache.tile_fullpath((z, x, y))
 
     def add_layer(self, tilemanager, opacity=1.0):
         """
@@ -135,40 +131,26 @@ class TilesManager(object):
         assert has_pil, _("Cannot blend layers without python PIL")
         assert self.tile_size == tilemanager.tile_size, _("Cannot blend layers whose tile size differs")
         assert 0 <= opacity <= 1, _("Opacity should be between 0.0 and 1.0")
+        self.cache.basename += tilemanager.cache.basename
         self._layers.append((tilemanager, opacity))
 
-    def prepare_tile(self, (z, x, y)):
+    def _prepare_tile(self, (z, x, y)):
         """
-        Check already rendered tiles in `tiles_dir`, and copy them in the
-        same temporary directory.
+        Prepare missing tiles, seed the cache.
         """
-        tile_dir, tile_name = self.tile_file((z, x, y))
-        tile_abs_uri = self.tile_fullpath((z, x, y))
-        tile_abs_dir = os.path.dirname(tile_abs_uri)
-        
-        # Render missing tiles !
-        if self.cache and os.path.exists(tile_abs_uri):
-            logger.debug(_("Found %s") % tile_abs_uri)
-        else:
-            if not os.path.isdir(tile_abs_dir):
-                os.makedirs(tile_abs_dir)
-            self.reader.tile(z, x, y, tile_abs_uri)
+        tile_abs_uri = self.cache.tile_fullpath((z, x, y))
+        output = self.cache.read((z, x, y))
+        if output is None:
+            output = self.reader.tile(z, x, y)
+            self.cache.save(output, (z, x, y))
             self.rendered += 1
-
         # Blend layers
         if len(self._layers) > 0:
             logger.debug(_("Will blend %s layer(s) into %s") % (len(self._layers),
                                                                 tile_abs_uri))
-            self.blend_layers(tile_abs_uri, (z, x, y))
+            self._blend_layers(tile_abs_uri, (z, x, y))
 
-        # If taken or rendered in cache, copy it to temporary dir
-        if self.cache and self.tmp_dir != self.tiles_dir:
-            tmp_dir = os.path.join(self.tmp_dir, tile_dir)
-            if not os.path.isdir(tmp_dir):
-                os.makedirs(tmp_dir)
-            shutil.copy(tile_abs_uri, tmp_dir)
-
-    def blend_layers(self, tile_fullpath, (z, x, y)):
+    def _blend_layers(self, tile_fullpath, (z, x, y)):
         """
         Merge tiles of all layers into the specified tile path
         """
@@ -180,7 +162,7 @@ class TilesManager(object):
         for (layer, opacity) in self._layers:
             try:
                 # Prepare tile of overlay, if available
-                layer.prepare_tile((z, x, y))
+                layer._prepare_tile((z, x, y))
             except (DownloadError, ExtractionError), e:
                 logger.warn(e)
                 continue
@@ -198,20 +180,11 @@ class TilesManager(object):
 
     def clean(self):
         """
-        Remove temporary directory and destination MBTile if full = True
+        Clean cache of all layers
         """
-        logger.debug(_("Clean-up %s") % self.tmp_dir)
-        try:
-            shutil.rmtree(self.tmp_dir)
-            # Delete parent folder only if empty
-            try:
-                parent = os.path.dirname(self.tmp_dir)
-                os.rmdir(parent)
-                logger.debug(_("Clean-up parent %s") % parent)
-            except OSError:
-                pass
-        except OSError:
-            pass
+        for layer, opacity in self._layers:
+            layer.clean()
+        self.cache.clean()
 
 
 class MBTilesBuilder(TilesManager):
@@ -220,12 +193,14 @@ class MBTilesBuilder(TilesManager):
         A MBTiles builder for a list of bounding boxes and zoom levels.
 
         filepath -- output MBTiles file (default DEFAULT_FILEPATH)
+        tmp_dir -- temporary folder for gathering tiles (default DEFAULT_TMP_DIR/filepath)
         """
         super(MBTilesBuilder, self).__init__(**kwargs)
         self.filepath = kwargs.get('filepath', DEFAULT_FILEPATH)
-        self.basename, ext = os.path.splitext(os.path.basename(self.filepath))
-        self.tmp_dir = os.path.join(self.tmp_dir, self.basename)
-        self.tiles_dir = kwargs.get('tiles_dir', self.tmp_dir)
+        # Gather tiles for mbutil
+        basename, ext = os.path.splitext(os.path.basename(self.filepath))
+        self.tmp_dir = kwargs.get('tmp_dir', DEFAULT_TMP_DIR)
+        self.tmp_dir = os.path.join(self.tmp_dir, basename)
         # Number of tiles in total
         self.nbtiles = 0
         self._bboxes = []
@@ -252,26 +227,31 @@ class MBTilesBuilder(TilesManager):
 
     def run(self, force=False):
         """
-        Build a MBTile file, only if it does not exist.
+        Build a MBTile file.
+        
+        force -- overwrite if MBTiles file already exists.
         """
         if os.path.exists(self.filepath):
             if force:
                 logger.warn(_("%s already exists. Overwrite.") % self.filepath)
+                os.remove(self.filepath)
             else:
                 # Already built, do not do anything.
                 logger.info(_("%s already exists. Nothing to do.") % self.filepath)
                 return
         
         # Clean previous runs
-        self.clean(full=force)
+        self._clean_gather()
 
         # If no coverage added, use bottom layer metadata
         if len(self._bboxes) == 0 and len(self._layers) > 0:
             bottomlayer = self._layers[0]
             metadata = bottomlayer.reader.metadata()
-            bbox = map(float, metadata.get('bounds', '').split(','))
-            zoomlevels = range(int(metadata.get('minzoom', 0)), int(metadata.get('maxzoom', 0)))
-            self.add_coverage(bbox=bbox, zoomlevels=zoomlevels)
+            if 'bounds' in metadata:
+                logger.debug(_("Use bounds of bottom layer %s") % bottomlayer)
+                bbox = map(float, metadata.get('bounds', '').split(','))
+                zoomlevels = range(int(metadata.get('minzoom', 0)), int(metadata.get('maxzoom', 0)))
+                self.add_coverage(bbox=bbox, zoomlevels=zoomlevels)
 
         # Compute list of tiles
         tileslist = set()
@@ -289,7 +269,8 @@ class MBTilesBuilder(TilesManager):
         # Go through whole list of tiles and gather them in tmp_dir
         self.rendered = 0
         for (z, x, y) in tileslist:
-            self.prepare_tile((z, x, y))
+            self._prepare_tile((z, x, y))
+
         logger.debug(_("%s tiles were missing.") % self.rendered)
 
         # Some metadata
@@ -310,20 +291,33 @@ class MBTilesBuilder(TilesManager):
         # Package it! 
         logger.info(_("Build MBTiles file '%s'.") % self.filepath)
         disk_to_mbtiles(self.tmp_dir, self.filepath)
+        os.remove("%s-journal" % self.filepath)  # created by mbutil
+        self._clean_gather()
         self.clean()
 
-    def clean(self, full=False):
-        """
-        Remove temporary directory and destination MBTile if full = True
-        """
-        super(MBTilesBuilder, self).clean()
+    def _prepare_tile(self, (z, x, y)):
+        super(MBTilesBuilder, self)._prepare_tile((z, x, y))
+        self._gather((z, x, y))
+
+    def _gather(self, (z, x, y)):
+        tile_abs_uri = self.cache.tile_fullpath((z, x, y))
+        tile_dir, tile_name = self.cache.tile_file((z, x, y))
+        tmp_dir = os.path.join(self.tmp_dir, tile_dir)
+        if not os.path.isdir(tmp_dir):
+            os.makedirs(tmp_dir)
+        shutil.copy(tile_abs_uri, tmp_dir)
+
+    def _clean_gather(self):
+        logger.debug(_("Clean-up %s") % self.tmp_dir)
         try:
-            for layer, opacity in self._layers:
-                layer.clean()
-            if full:
-                logger.debug(_("Delete %s") % self.filepath)
-                os.remove(self.filepath)
-                os.remove("%s-journal" % self.filepath)
+            shutil.rmtree(self.tmp_dir)
+            # Delete parent folder only if empty
+            try:
+                parent = os.path.dirname(self.tmp_dir)
+                os.rmdir(parent)
+                logger.debug(_("Clean-up parent %s") % parent)
+            except OSError:
+                pass
         except OSError:
             pass
 
@@ -368,7 +362,7 @@ class ImageExporter(TilesManager):
             for j, (x, y) in enumerate(row):
                 offset = (j * self.tile_size, i * self.tile_size)
                 tile_path = self.tile_fullpath((zoomlevel, x, y))
-                self.prepare_tile((zoomlevel, x, y))
+                self._prepare_tile((zoomlevel, x, y))
                 img = Image.open(tile_path)
                 result.paste(img, offset)
         result.save(imagepath)
