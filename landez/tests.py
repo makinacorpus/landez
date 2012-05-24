@@ -177,6 +177,19 @@ class TestCache(unittest.TestCase):
         mb.cache.clean()
         self.assertFalse(os.path.exists(mb.cache.folder))
 
+
+class TestLayers(unittest.TestCase):
+    def test_cache_folder(self):
+        mb = TilesManager(tiles_url='http://server')
+        self.assertEqual(mb.cache.folder, '/tmp/landez/server')
+        over = TilesManager(tiles_url='http://toto')
+        self.assertEqual(over.cache.folder, '/tmp/landez/toto')
+        mb.add_layer(over)
+        self.assertEqual(mb.cache.folder, '/tmp/landez/servertoto10')
+        mb.add_layer(over, 0.5)
+        self.assertEqual(mb.cache.folder, '/tmp/landez/servertoto10toto05')
+
+
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
     unittest.main()

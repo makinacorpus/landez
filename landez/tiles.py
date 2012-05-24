@@ -5,6 +5,7 @@ from gettext import gettext as _
 import json
 import mimetypes
 from tempfile import NamedTemporaryFile
+from StringIO import StringIO
 
 from mbutil import disk_to_mbtiles
 
@@ -135,7 +136,7 @@ class TilesManager(object):
         assert has_pil, _("Cannot blend layers without python PIL")
         assert self.tile_size == tilemanager.tile_size, _("Cannot blend layers whose tile size differs")
         assert 0 <= opacity <= 1, _("Opacity should be between 0.0 (transparent) and 1.0 (opaque)")
-        self.cache.basename += tilemanager.cache.basename
+        self.cache.basename += '%s%.1f' % (tilemanager.cache.basename, opacity)
         self._layers.append((tilemanager, opacity))
 
     def tile(self, (z, x, y)):
@@ -149,6 +150,7 @@ class TilesManager(object):
             if len(self._layers) > 0:
                 logger.debug(_("Will blend %s layer(s)") % len(self._layers))
                 output = self._blend_layers(output, (z, x, y))
+            # Save result to cache
             self.cache.save(output, (z, x, y))
             self.rendered += 1
         return output
@@ -165,7 +167,7 @@ class TilesManager(object):
         for (layer, opacity) in self._layers:
             try:
                 # Prepare tile of overlay, if available
-                overlay = self._tile_image((z, x, y))
+                overlay = self._tile_image(self.tile((z, x, y)))
             except (DownloadError, ExtractionError), e:
                 logger.warn(e)
                 continue
@@ -183,21 +185,17 @@ class TilesManager(object):
         os.unlink(result_tmp.name)
         return content
 
-    def _tile_image(self, (z, x, y), delete=True):
+    def _tile_image(self, data):
         """
         Tile binary content as PIL Image.
-        
-        delete -- if set to False, the temporary image with not be deleted
         """
-        tilecontent = self.tile((z, x, y))
-        tile_tmp = NamedTemporaryFile(delete=False, suffix=self._tile_extension)
-        tile_tmp.write(tilecontent)
-        tile_tmp.close()
-        path = tile_tmp.name
-        img = Image.open(path)
-        if delete:
-            os.unlink(path)
-        return img
+        image = Image.open(StringIO(data))
+        return image
+    
+    def _image_tile(self, image):
+        out = StringIO()
+        image.save(out, self._tile_extension[1:])
+        return out.getvalue()
 
 
 class MBTilesBuilder(TilesManager):
@@ -374,6 +372,6 @@ class ImageExporter(TilesManager):
         for i, row in enumerate(grid):
             for j, (x, y) in enumerate(row):
                 offset = (j * self.tile_size, i * self.tile_size)
-                img = self._tile_image((zoomlevel, x, y))
+                img = self._tile_image(self.tile((zoomlevel, x, y)))
                 result.paste(img, offset)
         result.save(imagepath)

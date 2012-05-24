@@ -59,7 +59,7 @@ class Disk(Cache):
     @basename.setter
     def basename(self, basename):
         self._basename = basename
-        subfolder = re.sub(r'[^a-z^A-Z^0-9]+', '', basename)
+        subfolder = re.sub(r'[^a-z^A-Z^0-9]+', '', basename.lower())
         self.folder = os.path.join(self._basefolder, subfolder)
 
     def tile_fullpath(self, (z, x, y)):
