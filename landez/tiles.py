@@ -115,6 +115,8 @@ class TilesManager(object):
 
         # Overlays
         self._layers = []
+        # Filters
+        self._filters = []
         # Number of tiles rendered/downloaded here
         self.rendered = 0
 
@@ -139,6 +141,12 @@ class TilesManager(object):
         self.cache.basename += '%s%.1f' % (tilemanager.cache.basename, opacity)
         self._layers.append((tilemanager, opacity))
 
+    def add_filter(self, filter_):
+        """ Add an image filter for post-processing """
+        assert has_pil, _("Cannot add filters without python PIL")
+        self.cache.basename += filter_.basename
+        self._filters.append(filter_)
+
     def tile(self, (z, x, y)):
         """
         Return the tile (binary) content of the tile and seed the cache.
@@ -150,6 +158,10 @@ class TilesManager(object):
             if len(self._layers) > 0:
                 logger.debug(_("Will blend %s layer(s)") % len(self._layers))
                 output = self._blend_layers(output, (z, x, y))
+            # Apply filters
+            for f in self._filters:
+                image = f.process(self._tile_image(output))
+                output = self._image_tile(image)
             # Save result to cache
             self.cache.save(output, (z, x, y))
             self.rendered += 1

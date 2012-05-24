@@ -190,6 +190,15 @@ class TestLayers(unittest.TestCase):
         self.assertEqual(mb.cache.folder, '/tmp/landez/servertoto10toto05')
 
 
+class TestFilters(unittest.TestCase):
+    def test_cache_folder(self):
+        from filters import ColorToAlpha
+        mb = TilesManager(tiles_url='http://server')
+        self.assertEqual(mb.cache.folder, '/tmp/landez/server')
+        mb.add_filter(ColorToAlpha('#ffffff'))
+        self.assertEqual(mb.cache.folder, '/tmp/landez/servercolortoalphaffffff')
+
+
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
     unittest.main()
