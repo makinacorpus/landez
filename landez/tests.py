@@ -104,6 +104,18 @@ class TestMBTilesBuilder(unittest.TestCase):
         os.remove('small.mbtiles')
         os.remove('big.mbtiles')
 
+    def test_run_jpeg(self):
+        output = 'mq.mbtiles'
+        mb = MBTilesBuilder(filepath=output, 
+                            tiles_url='http://oatile1.mqcdn.com/tiles/1.0.0/sat/{z}/{x}/{y}.jpg')
+        mb.add_coverage(bbox=(1.3, 43.5, 1.6, 43.7), zoomlevels=[10])
+        mb.run(force=True)
+        self.assertEqual(mb.nbtiles, 4)
+        # Check result
+        reader = MBTilesReader(output)
+        self.assertEqual(reader.metadata().get('format'), 'jpe')
+        os.remove(output)
+
     def test_clean_gather(self):
         mb = MBTilesBuilder()
         self.assertEqual(mb.tmp_dir, '/tmp/landez/tiles')
