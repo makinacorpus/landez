@@ -2,9 +2,11 @@ import os
 import logging
 import unittest
 
-from tiles import (TilesManager, MBTilesBuilder, ImageExporter, EmptyCoverageError, DownloadError)
+from tiles import (TilesManager, MBTilesBuilder, ImageExporter,
+                   EmptyCoverageError, DownloadError)
 from proj import InvalidCoverageError
 from cache import Disk
+from sources import MBTilesReader
 
 
 class TestTilesManager(unittest.TestCase):
@@ -13,7 +15,8 @@ class TestTilesManager(unittest.TestCase):
         self.assertEqual(mb.tile_format, 'image/png')
         self.assertEqual(mb.cache.extension, '.png')
         # Format from WMS options
-        mb = TilesManager(wms_server='dumb', wms_layers=['dumber'], wms_options={'format': 'image/jpeg'})
+        mb = TilesManager(wms_server='dumb', wms_layers=['dumber'],
+                          wms_options={'format': 'image/jpeg'})
         self.assertEqual(mb.tile_format, 'image/jpeg')
         self.assertEqual(mb.cache.extension, '.jpe')
         # Format from URL extension
@@ -27,22 +30,21 @@ class TestTilesManager(unittest.TestCase):
         mb = TilesManager(tiles_url='http://tileserver/tiles/')
         self.assertEqual(mb.tile_format, 'image/png')
         self.assertEqual(mb.cache.extension, '.png')
-        mb = TilesManager(tile_format='image/gif', tiles_url='http://tileserver/tiles/')
+        mb = TilesManager(tile_format='image/gif',
+                          tiles_url='http://tileserver/tiles/')
         self.assertEqual(mb.tile_format, 'image/gif')
         self.assertEqual(mb.cache.extension, '.gif')
 
     def test_tileslist(self):
         mb = TilesManager()
-        
         # World at level 0
         l = mb.tileslist((-180.0, -90.0, 180.0, 90.0), [0])
         self.assertEqual(l, [(0, 0, 0)])
-        
         # World at levels [0, 1]
         l = mb.tileslist((-180.0, -90.0, 180.0, 90.0), [0, 1])
-        self.assertEqual(l, [(0, 0, 0), 
+        self.assertEqual(l, [(0, 0, 0),
                              (1, 0, 0), (1, 0, 1), (1, 1, 0), (1, 1, 1)])
-
+        # Incorrect bounds
         self.assertRaises(InvalidCoverageError, mb.tileslist, (-91.0, -180.0), [0])
         self.assertRaises(InvalidCoverageError, mb.tileslist, (-90.0, -180.0, 180.0, 90.0), [])
         self.assertRaises(InvalidCoverageError, mb.tileslist, (-91.0, -180.0, 180.0, 90.0), [0])
@@ -53,28 +55,23 @@ class TestTilesManager(unittest.TestCase):
     def test_download_tile(self):
         mb = TilesManager(cache=False)
         tile = (1, 1, 1)
-                
         # Unknown URL keyword
         mb = TilesManager(tiles_url="http://{X}.tile.openstreetmap.org/{z}/{x}/{y}.png")
         self.assertRaises(DownloadError, mb.tile, (1, 1, 1))
-        
         # With subdomain keyword
         mb = TilesManager(tiles_url="http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png")
         content = mb.tile(tile)
         self.assertTrue(content is not None)
-        
         # No subdomain keyword
         mb = TilesManager(tiles_url="http://tile.cloudmade.com/f1fe9c2761a15118800b210c0eda823c/1/{size}/{z}/{x}/{y}.png")
         content = mb.tile(tile)
         self.assertTrue(content is not None)
-        
         # Subdomain in available range
         mb = TilesManager(tiles_url="http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-                          tiles_subdomains = list("abc"))
+                          tiles_subdomains=list("abc"))
         for y in range(3):
             content = mb.tile((10, 0, y))
             self.assertTrue(content is not None)
-        
         # Subdomain out of range
         mb = TilesManager(tiles_subdomains=list("abcz"))
         self.assertRaises(DownloadError, mb.tile, (10, 1, 2))
@@ -93,16 +90,16 @@ class TestMBTilesBuilder(unittest.TestCase):
 
     def test_run(self):
         mb = MBTilesBuilder(filepath='big.mbtiles')
+        # Fails if no coverage
         self.assertRaises(EmptyCoverageError, mb.run, True)
-
+        # Runs well from web tiles
         mb.add_coverage(bbox=(-180.0, -90.0, 180.0, 90.0), zoomlevels=[0, 1])
-        mb.run()
+        mb.run(force=True)
         self.assertEqual(mb.nbtiles, 5)
-
-        # Test from other mbtiles
+        # Read from other mbtiles
         mb2 = MBTilesBuilder(filepath='small.mbtiles', mbtiles_file=mb.filepath, cache=False)
         mb2.add_coverage(bbox=(-180.0, -90.0, 180.0, 90.0), zoomlevels=[1])
-        mb2.run()
+        mb2.run(force=True)
         self.assertEqual(mb2.nbtiles, 4)
         os.remove('small.mbtiles')
         os.remove('big.mbtiles')
@@ -118,13 +115,12 @@ class TestMBTilesBuilder(unittest.TestCase):
 
 
 class TestImageExporter(unittest.TestCase):
-
     def test_gridtiles(self):
         mb = ImageExporter()
-
+        # At zoom level 0
         grid = mb.grid_tiles((-180.0, -90.0, 180.0, 90.0), 0)
         self.assertEqual(grid, [[(0, 0)]])
-        
+        # At zoom level 1
         grid = mb.grid_tiles((-180.0, -90.0, 180.0, 90.0), 1)
         self.assertEqual(grid, [[(0, 0), (1, 0)],
                                 [(0, 1), (1, 1)]])
@@ -137,7 +133,6 @@ class TestImageExporter(unittest.TestCase):
         i = Image.open(output)
         self.assertEqual((1024, 1024), i.size)
         os.remove(output)
-        
         # Test from other mbtiles
         mb = MBTilesBuilder(filepath='toulouse.mbtiles')
         mb.add_coverage(bbox=(1.3, 43.5, 1.6, 43.7), zoomlevels=[12])
