@@ -1,6 +1,3 @@
-# Code taken from Phatch - Photo Batch Processor
-# Copyright (C) 2007-2010 www.stani.be
-
 class Filter(object):
     @property
     def basename(self):
@@ -25,6 +22,11 @@ class Filter(object):
         return (r, g, b, a)
 
 
+class GrayScale(Filter):
+    def process(self, image):
+        return image.convert('L')
+
+
 class ColorToAlpha(Filter):
     def __init__(self, color):
         self.color = color
@@ -34,6 +36,9 @@ class ColorToAlpha(Filter):
         return super(ColorToAlpha, self).basename + self.color
         
     def process(self, image):
+        # Code taken from Phatch - Photo Batch Processor
+        # Copyright (C) 2007-2010 www.stani.be
+
         from PIL import Image, ImageMath
 
         def difference1(source, color):

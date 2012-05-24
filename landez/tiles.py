@@ -386,4 +386,5 @@ class ImageExporter(TilesManager):
                 offset = (j * self.tile_size, i * self.tile_size)
                 img = self._tile_image(self.tile((zoomlevel, x, y)))
                 result.paste(img, offset)
+        logger.info(_("Save resulting image to '%s'") % imagepath)
         result.save(imagepath)
