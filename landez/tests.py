@@ -11,12 +11,25 @@ class TestTilesManager(unittest.TestCase):
     def test_format(self):
         mb = TilesManager()
         self.assertEqual(mb.tile_format, 'image/png')
+        self.assertEqual(mb.cache.extension, '.png')
+        # Format from WMS options
         mb = TilesManager(wms_server='dumb', wms_layers=['dumber'], wms_options={'format': 'image/jpeg'})
         self.assertEqual(mb.tile_format, 'image/jpeg')
-
-    def test_path(self):
-        mb = TilesManager()
-        self.assertEqual(mb.cache.folder, '/tmp/landez/stileopenstreetmaporg')
+        self.assertEqual(mb.cache.extension, '.jpe')
+        # Format from URL extension
+        mb = TilesManager(tiles_url='http://tileserver/{z}/{x}/{y}.jpg')
+        self.assertEqual(mb.tile_format, 'image/jpeg')
+        self.assertEqual(mb.cache.extension, '.jpe')
+        mb = TilesManager(tiles_url='http://tileserver/{z}/{x}/{y}.png')
+        self.assertEqual(mb.tile_format, 'image/png')
+        self.assertEqual(mb.cache.extension, '.png')
+        # No extension in URL
+        mb = TilesManager(tiles_url='http://tileserver/tiles/')
+        self.assertEqual(mb.tile_format, 'image/png')
+        self.assertEqual(mb.cache.extension, '.png')
+        mb = TilesManager(tile_format='image/gif', tiles_url='http://tileserver/tiles/')
+        self.assertEqual(mb.tile_format, 'image/gif')
+        self.assertEqual(mb.cache.extension, '.gif')
 
     def test_tileslist(self):
         mb = TilesManager()

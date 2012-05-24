@@ -95,6 +95,10 @@ class TilesManager(object):
         elif self.stylefile:
             self.reader = MapnikRenderer(self.stylefile, self.tile_size)
         else:
+            mimetype, encoding = mimetypes.guess_type(self.tiles_url)
+            if mimetype and mimetype != self.tile_format:
+                self.tile_format = mimetype
+                logger.info(_("Tile format set to %s") % self.tile_format)
             self.reader = TileDownloader(self.tiles_url, self.tiles_subdomains, self.tile_size)
 
         # Tile files extensions
