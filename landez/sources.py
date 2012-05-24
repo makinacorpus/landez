@@ -18,7 +18,7 @@ except ImportError:
     pass
 
 
-from . import DEFAULT_TILE_SIZE, DOWNLOAD_RETRIES
+from . import DEFAULT_TILE_FORMAT, DEFAULT_TILE_SIZE, DOWNLOAD_RETRIES
 from proj import GoogleProjection
 
 
@@ -183,7 +183,7 @@ class WMSReader(TileSource):
             request='GetMap',
             version='1.1.1',
             styles='',
-            format='image/jpeg',
+            format=DEFAULT_TILE_FORMAT,
             transparent=False,
             layers=','.join(layers),
             width=self.tilesize,

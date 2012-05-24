@@ -67,8 +67,6 @@ class TilesManager(object):
         """
         self.tile_size = kwargs.get('tile_size', DEFAULT_TILE_SIZE)
         self.tile_format = kwargs.get('tile_format', DEFAULT_TILE_FORMAT)
-        self._tile_extension = mimetypes.guess_extension(self.tile_format, strict=False)
-        assert self._tile_extension, _("Unknown format %s") % self.tile_format
 
         # Tiles Download
         self.tiles_url = kwargs.get('tiles_url', DEFAULT_TILES_URL)
@@ -91,10 +89,17 @@ class TilesManager(object):
             assert self.wms_layers, _("Requires at least one layer (see ``wms_layers`` parameter)")
             self.reader = WMSReader(self.wms_server, self.wms_layers, 
                                     self.tile_size, **self.wms_options)
+            if 'format' in self.wms_options:
+                self.tile_format = self.wms_options['format']
+                logger.info(_("Tile format set to %s") % self.tile_format)
         elif self.stylefile:
             self.reader = MapnikRenderer(self.stylefile, self.tile_size)
         else:
             self.reader = TileDownloader(self.tiles_url, self.tiles_subdomains, self.tile_size)
+
+        # Tile files extensions
+        self._tile_extension = mimetypes.guess_extension(self.tile_format, strict=False)
+        assert self._tile_extension, _("Unknown format %s") % self.tile_format
 
         # Cache
         tiles_dir = kwargs.get('tiles_dir', DEFAULT_TMP_DIR)

@@ -8,6 +8,12 @@ from cache import Disk
 
 
 class TestTilesManager(unittest.TestCase):
+    def test_format(self):
+        mb = TilesManager()
+        self.assertEqual(mb.tile_format, 'image/png')
+        mb = TilesManager(wms_server='dumb', wms_layers=['dumber'], wms_options={'format': 'image/jpeg'})
+        self.assertEqual(mb.tile_format, 'image/jpeg')
+
     def test_path(self):
         mb = TilesManager()
         self.assertEqual(mb.cache.folder, '/tmp/landez/stileopenstreetmaporg')
