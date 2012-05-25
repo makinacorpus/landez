@@ -2,7 +2,7 @@
 CHANGELOG
 =========
 
-2.0.1 (unreleased)
+2.0.1 (2012-05-29)
 ==================
 
 * Fix infinite loop on blending layers
