@@ -5,8 +5,10 @@ CHANGELOG
 2.0.0 (unreleased)
 ==================
 
-- Nothing changed yet.
-
+* Rework cache mechanism
+* Jpeg tiles support (#14)
+* Remove use of temporary files 
+* Image post-processing (#11)
 
 2.0.0-alpha (2012-05-23)
 ========================
