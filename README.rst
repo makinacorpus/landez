@@ -112,8 +112,8 @@ Or composite a WMS layer with OpenStreetMap using transparency (40%):
 
 :: 
 
-    ie = ImageExporter(wms_server="http://yourserver.com/geoserver/wms", 
-                       wms_layers=["img:orthophoto"])
+    mb = MBTilesBuilder(wms_server="http://yourserver.com/geoserver/wms", 
+                        wms_layers=["img:orthophoto"])
     overlay = TilesManager(remote=True)
     mb.add_layer(overlay, 0.4)
     mb.run()
@@ -135,6 +135,32 @@ Specify tiles sources in the exact same way as for building MBTiles files.
     
     ie = ImageExporter(mbtiles_file="yourfile.mbtiles")
     ie.export_image(bbox=(-180.0, -90.0, 180.0, 90.0), zoomlevel=3, imagepath="image.png")
+
+
+Add post-processing filters
+===========================
+
+Convert map tiles to gray scale, more suitable for information overlay :
+
+::
+
+    from landez.filters import GrayScale
+    
+    ie = ImageExporter()
+    ie.add_filter(GrayScale())
+
+Replace a specific color by transparent pixels (i.e. color to alpha, *a-la-Gimp*) :
+
+::
+
+    from landez.filters import ColorToAlpha
+    
+    overlay = TileManager()
+    overlay.add_filter(ColorToAlpha('#ffffff'))  # white will be transparent
+    
+    ie = ImageExporter()
+    ie.add_layer(overlay)
+    ...
 
 
 Extract MBTiles content
