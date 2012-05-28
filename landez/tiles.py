@@ -171,15 +171,12 @@ class TilesManager(object):
         """
         Merge tiles of all layers into the specified tile path
         """
-        result_tmp = NamedTemporaryFile(delete=False, suffix=self._tile_extension)
-        result_tmp.write(imagecontent)
-        result_tmp.close()
-        result = Image.open(result_tmp.name)
+        result = self._tile_image(imagecontent)
         # Paste each layer
         for (layer, opacity) in self._layers:
             try:
                 # Prepare tile of overlay, if available
-                overlay = self._tile_image(self.tile((z, x, y)))
+                overlay = self._tile_image(layer.tile((z, x, y)))
             except (DownloadError, ExtractionError), e:
                 logger.warn(e)
                 continue
@@ -192,10 +189,7 @@ class TilesManager(object):
             mask = Image.merge("L", (a,))
             result.paste(overlay, (0, 0), mask)
         # Read result
-        result.save(result_tmp.name)
-        content = open(result_tmp.name).read()
-        os.unlink(result_tmp.name)
-        return content
+        return self._image_tile(result)
 
     def _tile_image(self, data):
         """
