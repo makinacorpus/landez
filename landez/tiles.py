@@ -198,7 +198,7 @@ class TilesManager(object):
         Tile binary content as PIL Image.
         """
         image = Image.open(StringIO(data))
-        return image
+        return image.convert('RGBA')
     
     def _image_tile(self, image):
         out = StringIO()

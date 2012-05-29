@@ -5,8 +5,7 @@ CHANGELOG
 2.0.2 (unreleased)
 ==================
 
-- Nothing changed yet.
-
+* Prevent the whole image to be converted to grayscale
 
 2.0.1 (2012-05-29)
 ==================
