@@ -18,11 +18,11 @@ class TestTilesManager(unittest.TestCase):
         mb = TilesManager(wms_server='dumb', wms_layers=['dumber'],
                           wms_options={'format': 'image/jpeg'})
         self.assertEqual(mb.tile_format, 'image/jpeg')
-        self.assertEqual(mb.cache.extension, '.jpe')
+        self.assertEqual(mb.cache.extension, '.jpeg')
         # Format from URL extension
         mb = TilesManager(tiles_url='http://tileserver/{z}/{x}/{y}.jpg')
         self.assertEqual(mb.tile_format, 'image/jpeg')
-        self.assertEqual(mb.cache.extension, '.jpe')
+        self.assertEqual(mb.cache.extension, '.jpeg')
         mb = TilesManager(tiles_url='http://tileserver/{z}/{x}/{y}.png')
         self.assertEqual(mb.tile_format, 'image/png')
         self.assertEqual(mb.cache.extension, '.png')
@@ -113,7 +113,7 @@ class TestMBTilesBuilder(unittest.TestCase):
         self.assertEqual(mb.nbtiles, 4)
         # Check result
         reader = MBTilesReader(output)
-        self.assertEqual(reader.metadata().get('format'), 'jpe')
+        self.assertEqual(reader.metadata().get('format'), 'jpeg')
         os.remove(output)
 
     def test_clean_gather(self):
