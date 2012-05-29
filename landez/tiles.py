@@ -4,7 +4,6 @@ import logging
 from gettext import gettext as _
 import json
 import mimetypes
-from tempfile import NamedTemporaryFile
 from StringIO import StringIO
 
 from mbutil import disk_to_mbtiles
