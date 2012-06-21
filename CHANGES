@@ -2,7 +2,7 @@
 CHANGELOG
 =========
 
-2.0.2 (unreleased)
+2.0.2 (2012-06-21)
 ==================
 
 * Prevent the whole image to be converted to grayscale
