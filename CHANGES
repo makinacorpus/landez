@@ -6,6 +6,7 @@ CHANGELOG
 ==================
 
 * Prevent the whole image to be converted to grayscale
+* Explicitly check http status code at tiles download
 
 2.0.1 (2012-05-29)
 ==================

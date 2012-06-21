@@ -166,8 +166,10 @@ class TileDownloader(TileSource):
         r = DOWNLOAD_RETRIES
         while r > 0:
             try:
-                return urllib.urlopen(url).read()
-            except IOError, e:
+                stream = urllib.urlopen(url)
+                assert stream.getcode() == 200
+                return stream.read()
+            except (AssertionError, IOError), e:
                 logger.debug(_("Download error, retry (%s left). (%s)") % (r, e))
                 r -= 1
         raise DownloadError(_("Cannot download URL %s") % url)

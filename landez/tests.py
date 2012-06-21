@@ -75,6 +75,9 @@ class TestTilesManager(unittest.TestCase):
         # Subdomain out of range
         mb = TilesManager(tiles_subdomains=list("abcz"))
         self.assertRaises(DownloadError, mb.tile, (10, 1, 2))
+        # Invalid URL
+        mb = TilesManager(tiles_url="http://{s}.osm.com")
+        self.assertRaises(DownloadError, mb.tile, (10, 1, 2))
 
 
 class TestMBTilesBuilder(unittest.TestCase):
