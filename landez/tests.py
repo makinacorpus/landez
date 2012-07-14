@@ -4,7 +4,7 @@ import unittest
 
 from tiles import (TilesManager, MBTilesBuilder, ImageExporter,
                    EmptyCoverageError, DownloadError)
-from proj import InvalidCoverageError
+from proj import InvalidCoverageError, ProjTransformer, HAS_PROJ, CustomTileSet
 from cache import Disk
 from sources import MBTilesReader
 
@@ -201,6 +201,85 @@ class TestFilters(unittest.TestCase):
         mb.add_filter(ColorToAlpha('#ffffff'))
         self.assertEqual(mb.cache.folder, '/tmp/landez/servercolortoalphaffffff')
 
+
+class TestProjBindings(unittest.TestCase):
+
+    def test_no_projection_required(self):
+        # There should not be any difference between lon/lat and EPSG:4326
+        t = ProjTransformer('EPSG:4326')
+        self.assertEqual(t.to_lonlat(5.386362, 43.293414), (5.386362, 43.293414,))
+        self.assertEqual(t.from_lonlat(5.386362, 43.293414), (5.386362, 43.293414,))
+
+    def test_common_projection(self):
+        if not HAS_PROJ:
+            self.skipTest('No projection library available')
+        p_lonlat = (5.386362, 43.293414,)
+        t = ProjTransformer('EPSG:3857') # "Google" Mercator
+        p_ref = (599607.075, 5356739.624,)
+        p = t.from_lonlat(*p_lonlat)
+        self.assertAlmostEqual(p[0], p_ref[0], places=3)
+        self.assertAlmostEqual(p[1], p_ref[1], places=3)
+        p = t.to_lonlat(*p_ref)
+        self.assertAlmostEqual(p[0], p_lonlat[0], places=3)
+        self.assertAlmostEqual(p[1], p_lonlat[1], places=3)
+        t = ProjTransformer('EPSG:2154') # Lambert 93
+        p_ref = (893744.752, 6246732.852,)
+        p = t.from_lonlat(*p_lonlat)
+        self.assertAlmostEqual(p[0], p_ref[0], places=3)
+        self.assertAlmostEqual(p[1], p_ref[1], places=3)
+        p = t.to_lonlat(*p_ref)
+        self.assertAlmostEqual(p[0], p_lonlat[0], places=3)
+        self.assertAlmostEqual(p[1], p_lonlat[1], places=3)
+
+
+class TestCustomTS(unittest.TestCase):
+
+    def test_res_init(self):
+        ts1 = CustomTileSet(proj='EPSG:4326',
+                           extent=(2.5, 40, 12.5, 50),
+                           max_resolution=10./512,
+                           level_number=3)
+        ts2 = CustomTileSet(proj='EPSG:4326',
+                            extent=(2.5, 30, 12.5, 60),
+                            resolutions=(10./512, 10./1024, 10./2048))
+        self.assertEqual(ts1.resolutions, ts2.resolutions)
+
+    def test_tile_at(self):
+        ts = CustomTileSet(proj='EPSG:4326',
+                           extent=(2.5, 40, 12.5, 50),
+                           level_number=3)
+        # FIXME: test breaks because of floating point imprecision
+        for z in range(len(ts.resolutions)):
+            res = ts.resolutions[z]
+            tile = ts.tile_at(z, (2.5 + 255*res, 40 + 255*res))
+            self.assertEqual(tile, (0, 0, 0))
+            tile = ts.tile_at(z, (2.5 + 256*res, 40 + 256*res))
+            self.assertEqual(tile, (0, 1, 1))
+
+    def test_eq_operator(self):
+        ts1 = CustomTileSet(proj='EPSG:4326',
+                            extent=(2.5, 40, 12.5, 50),
+                            level_number=3)
+        ts2 = CustomTileSet(proj='EPSG:4326',
+                            extent=(2.5, 40, 12.5, 50),
+                            resolutions=(10./256, 10./512, 10./1024))
+        ts3 = CustomTileSet(proj='EPSG:4326',
+                            extent=(2.5, 30, 12.5, 60),
+                            level_number=3)
+        self.assertTrue(ts1 == ts2)
+        self.assertFalse(ts1 == ts3)
+
+    def test_tileslist(self):
+        ts = CustomTileSet(proj='EPSG:4326',
+                           extent=(2.5, 40, 12.5, 50),
+                           level_number=3)
+        tsize = 256 * ts.resolutions[2]
+        bbox= (7.5 - tsize/2, 45 - tsize/2, 7.5 + tsize/2, 45 + tsize/2)
+        tlist = ts.tileslist(bbox, range(3))
+        self.assertEqual(tlist, [(0, 0, 0), (1, 0, 0), (1, 0, 1), (1, 1, 0),
+            (1, 1, 1), (2, 1, 1), (2, 1, 2), (2, 2, 1), (2, 2, 2)])
+        tlist = ts.tileslist(bbox, [2])
+        self.assertEqual(tlist, [(2, 1, 1), (2, 1, 2), (2, 2, 1), (2, 2, 2)])
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
