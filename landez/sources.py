@@ -238,7 +238,7 @@ class MapnikRenderer(TileSource):
         Render the specified tile with Mapnik
         """
         width = width or self.tilesize
-        width = height or self.tilesize
+        height = height or self.tilesize
         if not self._mapnik:
             if not width:
                 self.tile_size, 
