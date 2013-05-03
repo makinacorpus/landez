@@ -25,11 +25,11 @@ class GoogleProjection(object):
 
     """
     Transform Lon/Lat to Pixel within tiles
-    Originally written by OSM team : http://svn.openstreetmap.org/applications/rendering/mapnik/generate_tiles.py     
+    Originally written by OSM team : http://svn.openstreetmap.org/applications/rendering/mapnik/generate_tiles.py
     """
     def __init__(self, tilesize, levels = [0]):
         if not levels:
-            raise InvalidCoverageError(_("Wrong zoom levels.")) 
+            raise InvalidCoverageError(_("Wrong zoom levels."))
         self.Bc = []
         self.Cc = []
         self.zc = []
@@ -45,14 +45,14 @@ class GoogleProjection(object):
             self.zc.append((e,e))
             self.Ac.append(c)
             c *= 2
-    
+
     def project_pixels(self,ll,zoom):
          d = self.zc[zoom]
          e = round(d[0] + ll[0] * self.Bc[zoom])
          f = minmax(sin(DEG_TO_RAD * ll[1]),-0.9999,0.9999)
          g = round(d[1] + 0.5*log((1+f)/(1-f))*-self.Cc[zoom])
          return (e,g)
-     
+
     def unproject_pixels(self,px,zoom):
          e = self.zc[zoom]
          f = (px[0] - e[0])/self.Bc[zoom]
@@ -62,7 +62,7 @@ class GoogleProjection(object):
 
     def tile_at(self, zoom, position):
         """
-        Returns a tuple of (z, x, y) 
+        Returns a tuple of (z, x, y)
         """
         x, y = self.project_pixels(position, zoom)
         return (zoom, int(x/self.tilesize), int(y/self.tilesize))
@@ -102,7 +102,7 @@ class GoogleProjection(object):
         if abs(xmin) > 180 or abs(xmax) > 180 or \
            abs(ymin) > 90 or abs(ymax) > 90:
             raise InvalidCoverageError(_("Some coordinates exceed [-180,+180], [-90, 90]."))
-        
+
         if xmin >= xmax or ymin >= ymax:
             raise InvalidCoverageError(_("Bounding box format is (xmin, ymin, xmax, ymax)"))
 
@@ -113,7 +113,7 @@ class GoogleProjection(object):
         for z in self.levels:
             px0 = self.project_pixels(ll0,z)
             px1 = self.project_pixels(ll1,z)
-            
+
             for x in range(int(px0[0]/self.tilesize),
                            int(px1[0]/self.tilesize)+1):
                 if (x < 0) or (x >= 2**z):

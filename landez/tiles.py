@@ -8,12 +8,12 @@ from StringIO import StringIO
 
 from mbutil import disk_to_mbtiles
 
-from . import (DEFAULT_TILES_URL, DEFAULT_TILES_SUBDOMAINS, 
+from . import (DEFAULT_TILES_URL, DEFAULT_TILES_SUBDOMAINS,
                DEFAULT_TMP_DIR, DEFAULT_FILEPATH, DEFAULT_TILE_SIZE,
                DEFAULT_TILE_FORMAT)
 from proj import GoogleProjection
 from cache import Disk, Dummy
-from sources import (MBTilesReader, TileDownloader, WMSReader, 
+from sources import (MBTilesReader, TileDownloader, WMSReader,
                      MapnikRenderer, ExtractionError, DownloadError)
 
 has_pil = False
@@ -39,25 +39,25 @@ class EmptyCoverageError(Exception):
 
 
 class TilesManager(object):
-   
+
     def __init__(self, **kwargs):
         """
-        Manipulates tiles in general. Gives ability to list required tiles on a 
+        Manipulates tiles in general. Gives ability to list required tiles on a
         bounding box, download them, render them, extract them from other mbtiles...
-        
+
         Keyword arguments:
         cache -- use a local cache to share tiles between runs (default True)
 
-        tiles_dir -- Local folder containing existing tiles if cache is 
+        tiles_dir -- Local folder containing existing tiles if cache is
                      True, or where temporary tiles will be written otherwise
                      (default DEFAULT_TMP_DIR)
-        
+
         tiles_url -- remote URL to download tiles (*default DEFAULT_TILES_URL*)
-        
+
         stylefile -- mapnik stylesheet file (*to render tiles locally*)
-        
+
         mbtiles_file -- A MBTiles file providing tiles (*to extract its tiles*)
-        
+
         wms_server -- A WMS server url (*to request tiles*)
         wms_layers -- The list of layers to be requested
         wms_options -- WMS parameters to be requested (see ``landez.reader.WMSReader``)
@@ -87,7 +87,7 @@ class TilesManager(object):
             self.reader = MBTilesReader(self.mbtiles_file, self.tile_size)
         elif self.wms_server:
             assert self.wms_layers, _("Requires at least one layer (see ``wms_layers`` parameter)")
-            self.reader = WMSReader(self.wms_server, self.wms_layers, 
+            self.reader = WMSReader(self.wms_server, self.wms_layers,
                                     self.tile_size, **self.wms_options)
             if 'format' in self.wms_options:
                 self.tile_format = self.wms_options['format']
@@ -123,7 +123,7 @@ class TilesManager(object):
 
     def tileslist(self, bbox, zoomlevels):
         """
-        Build the tiles list within the bottom-left/top-right bounding 
+        Build the tiles list within the bottom-left/top-right bounding
         box (minx, miny, maxx, maxy) at the specified zoom levels.
         Return a list of tuples (z,x,y)
         """
@@ -198,7 +198,7 @@ class TilesManager(object):
         """
         image = Image.open(StringIO(data))
         return image.convert('RGBA')
-    
+
     def _image_tile(self, image):
         out = StringIO()
         image.save(out, self._tile_extension[1:])
@@ -246,7 +246,7 @@ class MBTilesBuilder(TilesManager):
     def run(self, force=False):
         """
         Build a MBTile file.
-        
+
         force -- overwrite if MBTiles file already exists.
         """
         if os.path.exists(self.filepath):
@@ -257,7 +257,7 @@ class MBTilesBuilder(TilesManager):
                 # Already built, do not do anything.
                 logger.info(_("%s already exists. Nothing to do.") % self.filepath)
                 return
-        
+
         # Clean previous runs
         self._clean_gather()
 
@@ -307,7 +307,7 @@ class MBTilesBuilder(TilesManager):
 
         # TODO: add UTF-Grid of last layer, if any
 
-        # Package it! 
+        # Package it!
         logger.info(_("Build MBTiles file '%s'.") % self.filepath)
         disk_to_mbtiles(self.tmp_dir, self.filepath)
         try:
@@ -349,7 +349,7 @@ class ImageExporter(TilesManager):
 
     def grid_tiles(self, bbox, zoomlevel):
         """
-        Return a grid of (x, y) tuples representing the juxtaposition 
+        Return a grid of (x, y) tuples representing the juxtaposition
         of tiles on the specified ``bbox`` at the specified ``zoomlevel``.
         """
         tiles = self.tileslist(bbox, [zoomlevel])
@@ -373,7 +373,7 @@ class ImageExporter(TilesManager):
         height = len(grid)
         widthpix = width * self.tile_size
         heightpix = height * self.tile_size
-        
+
         result = Image.new("RGBA", (widthpix, heightpix))
         offset = (0, 0)
         for i, row in enumerate(grid):

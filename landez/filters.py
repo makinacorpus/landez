@@ -2,7 +2,7 @@ class Filter(object):
     @property
     def basename(self):
         return self.__class__.__name__
-    
+
     def process(self, image):
         return image
 
@@ -34,7 +34,7 @@ class ColorToAlpha(Filter):
     @property
     def basename(self):
         return super(ColorToAlpha, self).basename + self.color
-        
+
     def process(self, image):
         # Code taken from Phatch - Photo Batch Processor
         # Copyright (C) 2007-2010 www.stani.be
@@ -51,7 +51,7 @@ class ColorToAlpha(Filter):
 
         def color_to_alpha(image, color=None):
             image = image.convert('RGBA')
-            
+
             color = map(float, Filter.string2rgba(self.color))
             img_bands = [band.convert("F") for band in image.split()]
 

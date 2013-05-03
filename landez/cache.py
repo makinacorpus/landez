@@ -55,7 +55,7 @@ class Disk(Cache):
     @property
     def basename(self):
         return self._basename
-    
+
     @basename.setter
     def basename(self, basename):
         self._basename = basename

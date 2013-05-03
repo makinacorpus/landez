@@ -29,9 +29,11 @@ class ExtractionError(Exception):
     """ Raised when extraction of tiles from specified MBTiles has failed """
     pass
 
+
 class InvalidFormatError(Exception):
     """ Raised when reading of MBTiles content has failed """
     pass
+
 
 class DownloadError(Exception):
     """ Raised when download at tiles URL fails DOWNLOAD_RETRIES times """
@@ -86,7 +88,7 @@ class MBTilesReader(TileSource):
     def tile(self, z, x, y):
         logger.debug(_("Extract tile %s") % ((z, x, y),))
         y_mercator = (2**int(z) - 1) - int(y)
-        rows = self._query('''SELECT tile_data FROM tiles 
+        rows = self._query('''SELECT tile_data FROM tiles
                               WHERE zoom_level=? AND tile_column=? AND tile_row=?;''', (z, x, y_mercator))
         t = rows.fetchone()
         if not t:
@@ -98,13 +100,13 @@ class MBTilesReader(TileSource):
             callback = 'grid'
 
         y_mercator = (2**int(z) - 1) - int(y)
-        rows = self._query('''SELECT grid FROM grids 
+        rows = self._query('''SELECT grid FROM grids
                               WHERE zoom_level=? AND tile_column=? AND tile_row=?;''', (z, x, y_mercator))
         t = rows.fetchone()
         if not t:
             raise ExtractionError(_("Could not extract grid %s from %s") % ((z, x, y), self.filename))
         grid_json = json.loads(zlib.decompress(t[0]))
-        
+
         rows = self._query('''SELECT key_name, key_json FROM grid_data
                               WHERE zoom_level=? AND tile_column=? AND tile_row=?;''', (z, x, y_mercator))
         # join up with the grid 'data' which is in pieces when stored in mbtiles file
@@ -117,12 +119,12 @@ class MBTilesReader(TileSource):
 
     def find_coverage(self, zoom):
         """
-        Returns the bounding box (minx, miny, maxx, maxy) of an adjacent 
+        Returns the bounding box (minx, miny, maxx, maxy) of an adjacent
         group of tiles at this zoom level.
         """
         # Find a group of adjacent available tiles at this zoom level
-        rows = self._query('''SELECT tile_column, tile_row FROM tiles 
-                              WHERE zoom_level=? 
+        rows = self._query('''SELECT tile_column, tile_row FROM tiles
+                              WHERE zoom_level=?
                               ORDER BY tile_column, tile_row;''', (zoom,))
         t = rows.fetchone()
         xmin, ymin = t
@@ -161,7 +163,7 @@ class TileDownloader(TileSource):
             url = self.tiles_url.format(**locals())
         except KeyError, e:
             raise DownloadError(_("Unknown keyword %s in URL") % e)
-        
+
         logger.debug(_("Retrieve tile at %s") % url)
         r = DOWNLOAD_RETRIES
         while r > 0:
@@ -203,7 +205,7 @@ class WMSReader(TileSource):
         bbox = proj.tile_bbox((z, x, y))
         bbox = proj.project(bbox[:2]) + proj.project(bbox[2:])
         bbox = ','.join(map(str, bbox))
-        # Build WMS request URL 
+        # Build WMS request URL
         encodedparams = urllib.urlencode(self.wmsParams)
         url = "%s?%s" % (self.url, encodedparams)
         url += "&bbox=%s" % bbox   # commas are not encoded
@@ -241,7 +243,7 @@ class MapnikRenderer(TileSource):
         height = height or self.tilesize
         if not self._mapnik:
             if not width:
-                self.tile_size, 
+                self.tile_size,
             self._mapnik = mapnik.Map(width, height)
             # Load style XML
             mapnik.load_map(self._mapnik, self.stylefile, True)
@@ -258,7 +260,7 @@ class MapnikRenderer(TileSource):
             bbox = mapnik.Box2d(c0.x, c0.y, c1.x, c1.y)
         else:
             bbox = mapnik.Envelope(c0.x, c0.y, c1.x, c1.y)
-        
+
         self._mapnik.resize(width, height)
         self._mapnik.zoom_to_box(bbox)
         self._mapnik.buffer_size = 128
