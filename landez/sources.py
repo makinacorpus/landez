@@ -42,7 +42,7 @@ class DownloadError(Exception):
 
 class TileSource(object):
     def __init__(self, tilesize=None):
-        if not tilesize:
+        if tilesize is None:
             tilesize = DEFAULT_TILE_SIZE
         self.tilesize = tilesize
         self.basename = ''
@@ -226,6 +226,7 @@ class MapnikRenderer(TileSource):
         self.stylefile = stylefile
         self.basename = os.path.basename(self.stylefile)
         self._mapnik = None
+        self._prj = None
 
     def tile(self, z, x, y):
         """
@@ -235,15 +236,13 @@ class MapnikRenderer(TileSource):
         proj = GoogleProjection(self.tilesize, [z])
         return self.render(proj.tile_bbox((z, x, y)))
 
-    def render(self, bbox, output, width=None, height=None):
+    def render(self, bbox, width=None, height=None):
         """
         Render the specified tile with Mapnik
         """
         width = width or self.tilesize
         height = height or self.tilesize
         if not self._mapnik:
-            if not width:
-                self.tile_size,
             self._mapnik = mapnik.Map(width, height)
             # Load style XML
             mapnik.load_map(self._mapnik, self.stylefile, True)
@@ -256,7 +255,7 @@ class MapnikRenderer(TileSource):
         c1 = self._prj.forward(mapnik.Coord(bbox[2], bbox[3]))
 
         # Bounding box for the tile
-        if hasattr(mapnik,'mapnik_version') and mapnik.mapnik_version() >= 800:
+        if hasattr(mapnik, 'mapnik_version') and mapnik.mapnik_version() >= 800:
             bbox = mapnik.Box2d(c0.x, c0.y, c1.x, c1.y)
         else:
             bbox = mapnik.Envelope(c0.x, c0.y, c1.x, c1.y)
