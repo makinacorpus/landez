@@ -7,6 +7,13 @@ For building MBTiles, Landez embeds *mbutil* from Mapbox https://github.com/mapb
 The land covered is specified using a list of bounding boxes and zoom levels.
 
 
+.. image:: https://travis-ci.org/makinacorpus/landez.png
+    :target: https://travis-ci.org/makinacorpus/landez
+
+.. image:: https://coveralls.io/repos/makinacorpus/landez/badge.png
+    :target: https://coveralls.io/r/makinacorpus/landez
+
+
 =======
 INSTALL
 =======
@@ -214,6 +221,10 @@ AUTHORS
     * Mathieu Leplatre <mathieu.leplatre@makina-corpus.com>
     * Sergej Tatarincev
     * Thanks to mbutil authors <https://github.com/mapbox/mbutil>
+
+
+.. image:: http://depot.makina-corpus.org/public/logo.gif
+    :target: http://www.makina-corpus.com
 
 =======
 LICENSE
