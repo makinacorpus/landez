@@ -1,6 +1,7 @@
 from math import pi, sin, log, exp, atan, tan
 from gettext import gettext as _
 
+from . import DEFAULT_TILE_SIZE
 
 DEG_TO_RAD = pi/180
 RAD_TO_DEG = 180/pi
@@ -27,7 +28,7 @@ class GoogleProjection(object):
     Transform Lon/Lat to Pixel within tiles
     Originally written by OSM team : http://svn.openstreetmap.org/applications/rendering/mapnik/generate_tiles.py
     """
-    def __init__(self, tilesize, levels = [0]):
+    def __init__(self, tilesize=DEFAULT_TILE_SIZE, levels = [0]):
         if not levels:
             raise InvalidCoverageError(_("Wrong zoom levels."))
         self.Bc = []
