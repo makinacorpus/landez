@@ -28,7 +28,7 @@ class GoogleProjection(object):
     Transform Lon/Lat to Pixel within tiles
     Originally written by OSM team : http://svn.openstreetmap.org/applications/rendering/mapnik/generate_tiles.py
     """
-    def __init__(self, tilesize=DEFAULT_TILE_SIZE, levels = [0]):
+    def __init__(self, tilesize=DEFAULT_TILE_SIZE, levels = [0], tms_scheme=False):
         if not levels:
             raise InvalidCoverageError(_("Wrong zoom levels."))
         self.Bc = []
@@ -38,6 +38,7 @@ class GoogleProjection(object):
         self.levels = levels
         self.maxlevel = max(levels) + 1
         self.tilesize = tilesize
+        self.tms_scheme = tms_scheme
         c = tilesize
         for d in range(self.maxlevel):
             e = c/2;
@@ -123,5 +124,7 @@ class GoogleProjection(object):
                                int(px1[1]/self.tilesize)+1):
                     if (y < 0) or (y >= 2**z):
                         continue
+                    if self.tms_scheme:
+                        y = ((2**z-1) - y)
                     l.append((z, x, y))
         return l
