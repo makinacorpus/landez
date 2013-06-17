@@ -220,6 +220,7 @@ AUTHORS
 
     * Mathieu Leplatre <mathieu.leplatre@makina-corpus.com>
     * Sergej Tatarincev
+    * Éric Bréhault
     * Thanks to mbutil authors <https://github.com/mapbox/mbutil>
 
 
