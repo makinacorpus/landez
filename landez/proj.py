@@ -49,18 +49,20 @@ class GoogleProjection(object):
             c *= 2
 
     def project_pixels(self,ll,zoom):
-         d = self.zc[zoom]
-         e = round(d[0] + ll[0] * self.Bc[zoom])
-         f = minmax(sin(DEG_TO_RAD * ll[1]),-0.9999,0.9999)
-         g = round(d[1] + 0.5*log((1+f)/(1-f))*-self.Cc[zoom])
-         return (e,g)
+        d = self.zc[zoom]
+        e = round(d[0] + ll[0] * self.Bc[zoom])
+        f = minmax(sin(DEG_TO_RAD * ll[1]),-0.9999,0.9999)
+        g = round(d[1] + 0.5*log((1+f)/(1-f))*-self.Cc[zoom])
+        return (e,g)
 
     def unproject_pixels(self,px,zoom):
-         e = self.zc[zoom]
-         f = (px[0] - e[0])/self.Bc[zoom]
-         g = (px[1] - e[1])/-self.Cc[zoom]
-         h = RAD_TO_DEG * ( 2 * atan(exp(g)) - 0.5 * pi)
-         return (f,h)
+        e = self.zc[zoom]
+        f = (px[0] - e[0])/self.Bc[zoom]
+        g = (px[1] - e[1])/-self.Cc[zoom]
+        h = RAD_TO_DEG * ( 2 * atan(exp(g)) - 0.5 * pi)
+        if self.tms_scheme:
+            h = - h
+        return (f,h)
 
     def tile_at(self, zoom, position):
         """
