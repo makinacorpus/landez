@@ -121,13 +121,13 @@ class TilesManager(object):
         # Number of tiles rendered/downloaded here
         self.rendered = 0
 
-    def tileslist(self, bbox, zoomlevels):
+    def tileslist(self, bbox, zoomlevels, tms_scheme=False):
         """
         Build the tiles list within the bottom-left/top-right bounding
         box (minx, miny, maxx, maxy) at the specified zoom levels.
         Return a list of tuples (z,x,y)
         """
-        proj = GoogleProjection(self.tile_size, zoomlevels)
+        proj = GoogleProjection(self.tile_size, zoomlevels, tms_scheme)
         return proj.tileslist(bbox)
 
     def add_layer(self, tilemanager, opacity=1.0):
