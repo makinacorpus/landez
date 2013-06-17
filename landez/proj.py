@@ -28,7 +28,7 @@ class GoogleProjection(object):
     Transform Lon/Lat to Pixel within tiles
     Originally written by OSM team : http://svn.openstreetmap.org/applications/rendering/mapnik/generate_tiles.py
     """
-    def __init__(self, tilesize=DEFAULT_TILE_SIZE, levels = [0]):
+    def __init__(self, tilesize=DEFAULT_TILE_SIZE, levels = [0], tms_scheme=False):
         if not levels:
             raise InvalidCoverageError(_("Wrong zoom levels."))
         self.Bc = []
@@ -38,6 +38,7 @@ class GoogleProjection(object):
         self.levels = levels
         self.maxlevel = max(levels) + 1
         self.tilesize = tilesize
+        self.tms_scheme = tms_scheme
         c = tilesize
         for d in range(self.maxlevel):
             e = c/2;
@@ -48,18 +49,20 @@ class GoogleProjection(object):
             c *= 2
 
     def project_pixels(self,ll,zoom):
-         d = self.zc[zoom]
-         e = round(d[0] + ll[0] * self.Bc[zoom])
-         f = minmax(sin(DEG_TO_RAD * ll[1]),-0.9999,0.9999)
-         g = round(d[1] + 0.5*log((1+f)/(1-f))*-self.Cc[zoom])
-         return (e,g)
+        d = self.zc[zoom]
+        e = round(d[0] + ll[0] * self.Bc[zoom])
+        f = minmax(sin(DEG_TO_RAD * ll[1]),-0.9999,0.9999)
+        g = round(d[1] + 0.5*log((1+f)/(1-f))*-self.Cc[zoom])
+        return (e,g)
 
     def unproject_pixels(self,px,zoom):
-         e = self.zc[zoom]
-         f = (px[0] - e[0])/self.Bc[zoom]
-         g = (px[1] - e[1])/-self.Cc[zoom]
-         h = RAD_TO_DEG * ( 2 * atan(exp(g)) - 0.5 * pi)
-         return (f,h)
+        e = self.zc[zoom]
+        f = (px[0] - e[0])/self.Bc[zoom]
+        g = (px[1] - e[1])/-self.Cc[zoom]
+        h = RAD_TO_DEG * ( 2 * atan(exp(g)) - 0.5 * pi)
+        if self.tms_scheme:
+            h = - h
+        return (f,h)
 
     def tile_at(self, zoom, position):
         """
@@ -123,5 +126,7 @@ class GoogleProjection(object):
                                int(px1[1]/self.tilesize)+1):
                     if (y < 0) or (y >= 2**z):
                         continue
+                    if self.tms_scheme:
+                        y = ((2**z-1) - y)
                     l.append((z, x, y))
         return l
