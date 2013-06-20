@@ -6,6 +6,7 @@ import json
 from gettext import gettext as _
 from pkg_resources import parse_version
 import urllib
+import urllib2
 from urlparse import urlparse
 from tempfile import NamedTemporaryFile
 
@@ -144,12 +145,13 @@ class MBTilesReader(TileSource):
 
 
 class TileDownloader(TileSource):
-    def __init__(self, url, subdomains=None, tilesize=None):
+    def __init__(self, url, headers=None, subdomains=None, tilesize=None):
         super(TileDownloader, self).__init__(tilesize)
         self.tiles_url = url
         self.tiles_subdomains = subdomains or ['a', 'b', 'c']
         parsed = urlparse(self.tiles_url)
         self.basename = parsed.netloc
+        self.headers = headers or {}
 
     def tile(self, z, x, y):
         """
@@ -168,7 +170,10 @@ class TileDownloader(TileSource):
         r = DOWNLOAD_RETRIES
         while r > 0:
             try:
-                stream = urllib.urlopen(url)
+                request = urllib2.Request(url)
+                for header, value in self.headers.items():
+                    request.add_header(header, value)
+                stream = urllib2.urlopen(request)
                 assert stream.getcode() == 200
                 return stream.read()
             except (AssertionError, IOError), e:
@@ -211,7 +216,7 @@ class WMSReader(TileSource):
         url += "&bbox=%s" % bbox   # commas are not encoded
         try:
             logger.debug(_("Download '%s'") % url)
-            f = urllib.urlopen(url)
+            f = urllib2.urlopen(url)
             header = f.info().typeheader
             assert header == self.wmsParams['format'], "Invalid WMS response type : %s" % header
             return f.read()

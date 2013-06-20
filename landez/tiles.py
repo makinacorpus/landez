@@ -53,6 +53,7 @@ class TilesManager(object):
                      (default DEFAULT_TMP_DIR)
 
         tiles_url -- remote URL to download tiles (*default DEFAULT_TILES_URL*)
+        tiles_headers -- HTTP headers to send (*default empty*)
 
         stylefile -- mapnik stylesheet file (*to render tiles locally*)
 
@@ -71,6 +72,7 @@ class TilesManager(object):
         # Tiles Download
         self.tiles_url = kwargs.get('tiles_url', DEFAULT_TILES_URL)
         self.tiles_subdomains = kwargs.get('tiles_subdomains', DEFAULT_TILES_SUBDOMAINS)
+        self.tiles_headers = kwargs.get('tiles_headers')
 
         # Tiles rendering
         self.stylefile = kwargs.get('stylefile')
@@ -99,7 +101,8 @@ class TilesManager(object):
             if mimetype and mimetype != self.tile_format:
                 self.tile_format = mimetype
                 logger.info(_("Tile format set to %s") % self.tile_format)
-            self.reader = TileDownloader(self.tiles_url, self.tiles_subdomains, self.tile_size)
+            self.reader = TileDownloader(self.tiles_url, headers=self.tiles_headers,
+                                         subdomains=self.tiles_subdomains, tilesize=self.tile_size)
 
         # Tile files extensions
         self._tile_extension = mimetypes.guess_extension(self.tile_format, strict=False)
