@@ -2,11 +2,11 @@
 CHANGELOG
 =========
 
-2.0.4 (unreleased)
+2.1.0 (unreleased)
 ==================
 
 * Add TMS support (ebrehault)
-
+* Add default subdomains argument for TileSource
 
 2.0.3 (2013-05-03)
 ==================

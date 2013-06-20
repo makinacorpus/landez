@@ -144,10 +144,10 @@ class MBTilesReader(TileSource):
 
 
 class TileDownloader(TileSource):
-    def __init__(self, url, subdomains, tilesize=None):
+    def __init__(self, url, subdomains=None, tilesize=None):
         super(TileDownloader, self).__init__(tilesize)
         self.tiles_url = url
-        self.tiles_subdomains = subdomains
+        self.tiles_subdomains = subdomains or ['a', 'b', 'c']
         parsed = urlparse(self.tiles_url)
         self.basename = parsed.netloc
 
