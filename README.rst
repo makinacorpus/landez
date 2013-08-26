@@ -175,7 +175,7 @@ Extract MBTiles content
 
 :: 
 
-    from landez.reader import MBTilesReader
+    from landez.sources import MBTilesReader
     
     mbreader = MBTilesReader("yourfile.mbtiles")
     
@@ -187,10 +187,10 @@ Extract MBTiles content
     
     # Image tile
     with open('tile.png', 'wb') as out:
-        out.write(reader.tile(z, x, y))
+        out.write(mbreader.tile(z, x, y))
     
     # UTF-Grid tile
-    print reader.grid(z, x, y, 'callback')
+    print mbreader.grid(z, x, y, 'callback')
 
 
 
