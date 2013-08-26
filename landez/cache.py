@@ -84,7 +84,7 @@ class Disk(Cache):
         tile_abs_uri = self.tile_fullpath((z, x, y))
         if os.path.exists(tile_abs_uri):
             logger.debug(_("Found %s") % tile_abs_uri)
-            return open(tile_abs_uri, 'r').read()
+            return open(tile_abs_uri, 'rb').read()
         return None
 
     def save(self, body, (z, x, y)):
