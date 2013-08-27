@@ -2,7 +2,7 @@
 CHANGELOG
 =========
 
-2.1.1 (unreleased)
+2.1.1 (2013-08-27)
 ==================
 
 * Do not hard-code ``grid();`` JSONP callback.
