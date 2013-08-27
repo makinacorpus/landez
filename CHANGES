@@ -8,6 +8,7 @@ CHANGELOG
 * Add TMS support (ebrehault)
 * Add default subdomains argument for TileSource
 * Add ability to set HTTP headers for tiles
+* Fix file corruption on Windows (by @osuchw)
 
 2.0.3 (2013-05-03)
 ==================
