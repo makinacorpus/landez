@@ -97,9 +97,6 @@ class MBTilesReader(TileSource):
         return t[0]
 
     def grid(self, z, x, y, callback=None):
-        if not callback:
-            callback = 'grid'
-
         y_mercator = (2**int(z) - 1) - int(y)
         rows = self._query('''SELECT grid FROM grids
                               WHERE zoom_level=? AND tile_column=? AND tile_row=?;''', (z, x, y_mercator))
@@ -116,7 +113,10 @@ class MBTilesReader(TileSource):
         while grid_data:
             grid_json['data'][grid_data[0]] = json.loads(grid_data[1])
             grid_data = rows.fetchone()
-        return '%s(%s);' % (callback, json.dumps(grid_json))
+        serialized = json.dumps(grid_json)
+        if callback is not None:
+            return '%s(%s);' % (callback, serialized)
+        return serialized
 
     def find_coverage(self, zoom):
         """
