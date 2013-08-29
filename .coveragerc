@@ -1,3 +1,2 @@
 [report]
-omit =
-    /home/travis/virtualenv/*
+source = landez
