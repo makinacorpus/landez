@@ -1,4 +1,5 @@
 import os
+import time
 import zlib
 import sqlite3
 import logging
@@ -168,6 +169,7 @@ class TileDownloader(TileSource):
 
         logger.debug(_("Retrieve tile at %s") % url)
         r = DOWNLOAD_RETRIES
+        sleeptime = 1
         while r > 0:
             try:
                 request = urllib2.Request(url)
@@ -179,6 +181,10 @@ class TileDownloader(TileSource):
             except (AssertionError, IOError), e:
                 logger.debug(_("Download error, retry (%s left). (%s)") % (r, e))
                 r -= 1
+                time.sleep(sleeptime)
+                # progressivly sleep longer to wait for this tile
+                if (sleeptime <= 10) and (r % 2 == 0):
+                    sleeptime += 1  # increase wait
         raise DownloadError(_("Cannot download URL %s") % url)
 
 

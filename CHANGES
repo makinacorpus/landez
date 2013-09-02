@@ -5,7 +5,7 @@ CHANGELOG
 2.1.2 (unreleased)
 ==================
 
-- Nothing changed yet.
+* Add delay between tiles downloads retries (by @kiorky)
 
 
 2.1.1 (2013-08-27)

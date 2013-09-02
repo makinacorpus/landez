@@ -14,7 +14,7 @@ DEFAULT_TILE_SIZE = 256
 """ Default tile format (mime-type) """
 DEFAULT_TILE_FORMAT = 'image/png'
 """ Number of retries for remove tiles downloading """
-DOWNLOAD_RETRIES = 3
+DOWNLOAD_RETRIES = 10
 """ Path to fonts for Mapnik rendering """
 TRUETYPE_FONTS_PATH = '/usr/share/fonts/truetype/'
 
