@@ -4,6 +4,8 @@ import logging
 from gettext import gettext as _
 import json
 import mimetypes
+import string
+
 from StringIO import StringIO
 
 from mbutil import disk_to_mbtiles
@@ -76,6 +78,11 @@ class TilesManager(object):
 
         # Tiles rendering
         self.stylefile = kwargs.get('stylefile')
+
+        # Grids rendering
+        self.grid_fields = kwargs.get('grid_fields', [])
+        self.grid_layer = kwargs.get('grid_layer', 0)
+        self.add_grids = kwargs.get('add_grids', False)
 
         # MBTiles reading
         self.mbtiles_file = kwargs.get('mbtiles_file')
@@ -171,6 +178,13 @@ class TilesManager(object):
             self.rendered += 1
         return output
 
+    def grid(self, (z, x, y)):
+        """ Return the UTFGrid content """
+        # sources.py -> MapnikRenderer -> grid
+        content = self.reader.grid(z, x, y, self.grid_fields, self.grid_layer) 
+        return content
+
+
     def _blend_layers(self, imagecontent, (z, x, y)):
         """
         Merge tiles of all layers into the specified tile path
@@ -222,6 +236,8 @@ class MBTilesBuilder(TilesManager):
         basename, ext = os.path.splitext(os.path.basename(self.filepath))
         self.tmp_dir = kwargs.get('tmp_dir', DEFAULT_TMP_DIR)
         self.tmp_dir = os.path.join(self.tmp_dir, basename)
+        self.tile_format = kwargs.get('tile_format', DEFAULT_TILE_FORMAT)
+
         # Number of tiles in total
         self.nbtiles = 0
         self._bboxes = []
@@ -304,6 +320,12 @@ class MBTilesBuilder(TilesManager):
         metadata['maxzoom'] = self.zoomlevels[-1]
         metadata['bounds'] = '%s,%s,%s,%s' % tuple(self.bounds)
         metadata['center'] = '%s,%s,%s' % (lon, lat, middlezoom)
+        #display informations from the grids on hover
+        content_to_display = ''
+        for field_name in self.grid_fields:
+            content_to_display += "{{{ %s }}}<br>" % field_name
+        metadata['template'] = '{{#__location__}}{{/__location__}} {{#__teaser__}} \
+        %s {{/__teaser__}}{{#__full__}}{{/__full__}}' % content_to_display
         metadatafile = os.path.join(self.tmp_dir, 'metadata.json')
         with open(metadatafile, 'w') as output:
             json.dump(metadata, output)
@@ -312,7 +334,9 @@ class MBTilesBuilder(TilesManager):
 
         # Package it!
         logger.info(_("Build MBTiles file '%s'.") % self.filepath)
-        disk_to_mbtiles(self.tmp_dir, self.filepath)
+        extension = self.tile_format.split("image/")[-1]
+        disk_to_mbtiles(self.tmp_dir, self.filepath, format=extension)
+
         try:
             os.remove("%s-journal" % self.filepath)  # created by mbutil
         except OSError, e:
@@ -320,19 +344,27 @@ class MBTilesBuilder(TilesManager):
         self._clean_gather()
 
     def _gather(self, (z, x, y)):
-        tile_dir, tile_name = self.cache.tile_file((z, x, y))
-        tmp_dir = os.path.join(self.tmp_dir, tile_dir)
+        files_dir, tile_name = self.cache.tile_file((z, x, y))
+        tmp_dir = os.path.join(self.tmp_dir, files_dir)
         if not os.path.isdir(tmp_dir):
             os.makedirs(tmp_dir)
         tilecontent = self.tile((z, x, y))
-        with open(os.path.join(tmp_dir, tile_name), 'wb') as f:
+        tilepath = os.path.join(tmp_dir, tile_name)
+        with open(tilepath, 'wb') as f:
             f.write(tilecontent)
+            f.close()
+        if self.add_grids:
+            gridcontent = self.grid((z, x, y))
+            gridpath = "%s.%s" % (os.path.splitext(tilepath)[0], 'grid.json')
+            with open(gridpath, 'w') as f:
+                f.write(gridcontent)
+                f.close()
 
     def _clean_gather(self):
         logger.debug(_("Clean-up %s") % self.tmp_dir)
         try:
             shutil.rmtree(self.tmp_dir)
-            # Delete parent folder only if empty
+            #Delete parent folder only if empty
             try:
                 parent = os.path.dirname(self.tmp_dir)
                 os.rmdir(parent)
