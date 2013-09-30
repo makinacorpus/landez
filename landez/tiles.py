@@ -82,7 +82,6 @@ class TilesManager(object):
         # Grids rendering
         self.grid_fields = kwargs.get('grid_fields', [])
         self.grid_layer = kwargs.get('grid_layer', 0)
-        self.add_grids = kwargs.get('add_grids', False)
 
         # MBTiles reading
         self.mbtiles_file = kwargs.get('mbtiles_file')
@@ -352,13 +351,11 @@ class MBTilesBuilder(TilesManager):
         tilepath = os.path.join(tmp_dir, tile_name)
         with open(tilepath, 'wb') as f:
             f.write(tilecontent)
-            f.close()
-        if self.add_grids:
+        if len(self.grid_fields) > 0:
             gridcontent = self.grid((z, x, y))
             gridpath = "%s.%s" % (os.path.splitext(tilepath)[0], 'grid.json')
             with open(gridpath, 'w') as f:
                 f.write(gridcontent)
-                f.close()
 
     def _clean_gather(self):
         logger.debug(_("Clean-up %s") % self.tmp_dir)

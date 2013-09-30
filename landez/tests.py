@@ -150,7 +150,6 @@ class TestMBTilesBuilder(unittest.TestCase):
             grid_fields = ["NAME"],
             grid_layer = 0,
             filepath = 'foo.mbtiles',
-            add_grid = True,
             cache = False
         )
 
