@@ -1,6 +1,7 @@
 import os
 import logging
 import unittest
+import shutil
 
 from tiles import (TilesManager, MBTilesBuilder, ImageExporter,
                    EmptyCoverageError, DownloadError)
@@ -81,10 +82,18 @@ class TestTilesManager(unittest.TestCase):
 
 
 class TestMBTilesBuilder(unittest.TestCase):
+    temp_cache = '/tmp/landez/stileopenstreetmaporg'
+
+    def setUp(self):
+        try:
+            shutil.rmtree(self.temp_cache)
+        except OSError:
+            pass
+
     def test_init(self):
         mb = MBTilesBuilder()
         self.assertEqual(mb.filepath, os.path.join(os.getcwd(), 'tiles.mbtiles'))
-        self.assertEqual(mb.cache.folder, '/tmp/landez/stileopenstreetmaporg')
+        self.assertEqual(mb.cache.folder, self.temp_cache)
         self.assertEqual(mb.tmp_dir, '/tmp/landez/tiles')
 
         mb = MBTilesBuilder(filepath='/foo/bar/toto.mb')
@@ -109,7 +118,7 @@ class TestMBTilesBuilder(unittest.TestCase):
 
     def test_run_jpeg(self):
         output = 'mq.mbtiles'
-        mb = MBTilesBuilder(filepath=output, 
+        mb = MBTilesBuilder(filepath=output,
                             tiles_url='http://oatile1.mqcdn.com/tiles/1.0.0/sat/{z}/{x}/{y}.jpg')
         mb.add_coverage(bbox=(1.3, 43.5, 1.6, 43.7), zoomlevels=[10])
         mb.run(force=True)
@@ -161,6 +170,13 @@ class TestImageExporter(unittest.TestCase):
 
 
 class TestCache(unittest.TestCase):
+    temp_path = '/tmp/landez/stileopenstreetmaporg'
+
+    def clean(self):
+        try:
+            shutil.rmtree(self.temp_path)
+        except OSError:
+            pass
 
     def test_folder(self):
         c = Disk('foo', '/tmp/')
@@ -170,7 +186,7 @@ class TestCache(unittest.TestCase):
 
     def test_clean(self):
         mb = TilesManager()
-        self.assertEqual(mb.cache.folder, '/tmp/landez/stileopenstreetmaporg')
+        self.assertEqual(mb.cache.folder, self.temp_path)
         # Missing dir
         self.assertFalse(os.path.exists(mb.cache.folder))
         mb.cache.clean()
@@ -180,6 +196,11 @@ class TestCache(unittest.TestCase):
         mb.cache.clean()
         self.assertFalse(os.path.exists(mb.cache.folder))
 
+    def setUp(self):
+        self.clean()
+
+    def tearDown(self):
+        self.clean()
 
 class TestLayers(unittest.TestCase):
     def test_cache_folder(self):
