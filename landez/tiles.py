@@ -316,7 +316,7 @@ class MBTilesBuilder(TilesManager):
         try:
             os.remove("%s-journal" % self.filepath)  # created by mbutil
         except OSError, e:
-            logger.debug(e)
+            pass
         self._clean_gather()
 
     def _gather(self, (z, x, y)):
