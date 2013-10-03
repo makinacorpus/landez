@@ -247,12 +247,7 @@ class MapnikRenderer(TileSource):
         proj = GoogleProjection(self.tilesize, [z])
         return self.render(proj.tile_bbox((z, x, y)))
 
-    def render(self, bbox, width=None, height=None):
-        """
-        Render the specified tile with Mapnik
-        """
-        width = width or self.tilesize
-        height = height or self.tilesize
+    def _prepare_rendering(self, bbox, width=None, height=None):
         if not self._mapnik:
             self._mapnik = mapnik.Map(width, height)
             # Load style XML
@@ -266,14 +261,18 @@ class MapnikRenderer(TileSource):
         c1 = self._prj.forward(mapnik.Coord(bbox[2], bbox[3]))
 
         # Bounding box for the tile
-        if hasattr(mapnik, 'mapnik_version') and mapnik.mapnik_version() >= 800:
-            bbox = mapnik.Box2d(c0.x, c0.y, c1.x, c1.y)
-        else:
-            bbox = mapnik.Envelope(c0.x, c0.y, c1.x, c1.y)
-
+        bbox = mapnik.Box2d(c0.x, c0.y, c1.x, c1.y)
         self._mapnik.resize(width, height)
         self._mapnik.zoom_to_box(bbox)
         self._mapnik.buffer_size = 128
+
+    def render(self, bbox, width=None, height=None):
+        """
+        Render the specified tile with Mapnik
+        """
+        width = width or self.tilesize
+        height = height or self.tilesize
+        self._prepare_rendering(bbox, width=width, height=height)
 
         # Render image with default Agg renderer
         tmpfile = NamedTemporaryFile(delete=False)
@@ -284,3 +283,25 @@ class MapnikRenderer(TileSource):
         content = open(tmpfile.name).read()
         os.unlink(tmpfile.name)
         return content
+
+    def grid(self, z, x, y, fields, layer):
+        """
+        Render the specified grid with Mapnik
+        """
+        logger.debug(_("Render grid %s") % ((z, x, y),))
+        proj = GoogleProjection(self.tilesize, [z])
+        return self.render_grid(proj.tile_bbox((z, x, y)), fields, layer)
+
+    def render_grid(self, bbox, grid_fields, layer, width=None, height=None):
+        """
+        Render the specified grid with Mapnik
+        """
+        width = width or self.tilesize
+        height = height or self.tilesize
+        self._prepare_rendering(bbox, width=width, height=height)
+
+        grid = mapnik.Grid(width, height)
+        mapnik.render_layer(self._mapnik, grid, layer=layer, fields=grid_fields)
+        grid = grid.encode()
+        return json.dumps(grid)
+
