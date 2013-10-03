@@ -1,6 +1,5 @@
 language: python
 python:
-  - 2.6
   - 2.7
 before_install:
   - sudo apt-add-repository --yes ppa:mapnik/v2.2.0
@@ -10,6 +9,9 @@ before_install:
   - pip install -r requirements.txt
 install:
   - python setup.py develop
+before_script:
+  - cp -R /usr/share/pyshared/mapnik /home/travis/virtualenv/python2.7/lib/python2.7/site-packages
+  - cp /usr/lib/pyshared/python2.7/mapnik/_mapnik.so /home/travis/virtualenv/python2.7/lib/python2.7/site-packages/mapnik
 script:
   - nosetests --with-coverage --cover-package=landez
 after_success:
