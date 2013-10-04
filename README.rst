@@ -34,7 +34,6 @@ And `PIL` to blend tiles together or export arranged tiles into images. ::
 
     sudo aptitude install python-imaging
 
-
 =====
 USAGE
 =====
@@ -64,6 +63,7 @@ Local rendering
 ---------------
 
 Using mapnik to render tiles:
+
 ::
 
     import logging
@@ -72,8 +72,25 @@ Using mapnik to render tiles:
     logging.basicConfig(level=logging.DEBUG)
     
     mb = MBTilesBuilder(stylefile="yourstyle.xml", filepath="dest.mbtiles")
-    mb.add_coverage(bbox=(-180.0, -90.0, 180.0, 90.0), 
+    mb.add_coverage(bbox=(-180.0, -90.0, 180.0, 90.0),
                     zoomlevels=[0, 1])
+    mb.run()
+
+
+And with UTFGrids:
+
+::
+
+    import logging
+    from landez import MBTilesBuilder
+    
+    logging.basicConfig(level=logging.DEBUG)
+    
+    mb = MBTilesBuilder(stylefile="yourstyle.xml",
+                        grid_fields=["field1", "field2", "field3", ...] ,
+                        filepath="dest.mbtiles")
+    mb.add_coverage(bbox=(-180, -90, 180, 90),
+                    zoomlevels=[0, 1, 2, 3])
     mb.run()
 
 
@@ -90,7 +107,6 @@ From an other MBTiles file
     mb.add_coverage(bbox=(-180.0, -90.0, 180.0, 90.0), 
                     zoomlevels=[0, 1])
     mb.run()
-
 
 
 From a WMS server
@@ -218,6 +234,19 @@ Manipulate tiles
     for tile in tiles:
         tilecontent = tm.tile(tile)  # download, extract or take from cache
         ...
+
+
+Run tests
+=========
+
+Run tests with nosetests (if you are working in a virtualenv, don't forget to install nose in it!):
+
+::
+    
+    cd landez
+    nosetests
+
+The Mapnik stylesheet for the test about grid content comes from <https://github.com/springmeyer/gridsforkids>
 
 
 =======

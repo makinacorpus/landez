@@ -1,12 +1,22 @@
 language: python
 python:
-  - 2.6
   - 2.7
+
+before_install:
+  - deactivate
+  - sudo apt-add-repository --yes ppa:mapnik/v2.2.0
+  - sudo apt-get update -qq
+  - sudo apt-get install -y libmapnik mapnik-utils python-mapnik
+  - virtualenv --system-site-packages venv
+  - source venv/bin/activate
+  - pip install -r requirements.txt
 install:
-  - pip install Pillow
-  - pip install coverage
   - python setup.py develop
-script:  coverage run -m landez.tests
+before_script:
+  - pip install nose
+  - pip install coverage
+script:
+  - nosetests --with-coverage --cover-package=landez
 after_success:
   - pip install coveralls
   - coveralls

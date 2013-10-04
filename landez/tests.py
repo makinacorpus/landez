@@ -2,6 +2,9 @@ import os
 import logging
 import unittest
 import shutil
+import tempfile
+import json
+import sqlite3
 
 from tiles import (TilesManager, MBTilesBuilder, ImageExporter,
                    EmptyCoverageError, DownloadError)
@@ -82,11 +85,14 @@ class TestTilesManager(unittest.TestCase):
 
 
 class TestMBTilesBuilder(unittest.TestCase):
-    temp_cache = '/tmp/landez/stileopenstreetmaporg'
+    temp_cache = os.path.join(tempfile.gettempdir(), 'landez/stileopenstreetmaporg')
+    temp_dir = os.path.join(tempfile.gettempdir(), 'landez/tiles')
 
-    def setUp(self):
+    def tearDown(self):
         try:
             shutil.rmtree(self.temp_cache)
+            shutil.rmtree(self.temp_dir)
+            os.remove('foo.mbtiles')
         except OSError:
             pass
 
@@ -94,11 +100,11 @@ class TestMBTilesBuilder(unittest.TestCase):
         mb = MBTilesBuilder()
         self.assertEqual(mb.filepath, os.path.join(os.getcwd(), 'tiles.mbtiles'))
         self.assertEqual(mb.cache.folder, self.temp_cache)
-        self.assertEqual(mb.tmp_dir, '/tmp/landez/tiles')
+        self.assertEqual(mb.tmp_dir, self.temp_dir)
 
         mb = MBTilesBuilder(filepath='/foo/bar/toto.mb')
-        self.assertEqual(mb.cache.folder, '/tmp/landez/stileopenstreetmaporg')
-        self.assertEqual(mb.tmp_dir, '/tmp/landez/toto')
+        self.assertEqual(mb.cache.folder, self.temp_cache)
+        self.assertEqual(mb.tmp_dir, os.path.join(tempfile.gettempdir(), 'landez/toto'))
 
     def test_run(self):
         mb = MBTilesBuilder(filepath='big.mbtiles')
@@ -130,13 +136,33 @@ class TestMBTilesBuilder(unittest.TestCase):
 
     def test_clean_gather(self):
         mb = MBTilesBuilder()
-        self.assertEqual(mb.tmp_dir, '/tmp/landez/tiles')
+        self.assertEqual(mb.tmp_dir, self.temp_dir)
         self.assertFalse(os.path.exists(mb.tmp_dir))
         mb._gather((1, 1, 1))
         self.assertTrue(os.path.exists(mb.tmp_dir))
         mb._clean_gather()
         self.assertFalse(os.path.exists(mb.tmp_dir))
 
+    def test_grid_content(self):
+        here = os.path.abspath(os.path.dirname(__file__))
+        mb = MBTilesBuilder(
+            stylefile = os.path.join(here, "data_test", "stylesheet.xml"),
+            grid_fields = ["NAME"],
+            grid_layer = 0,
+            filepath = 'foo.mbtiles',
+            cache = False
+        )
+
+        mb.add_coverage(bbox=(-180, -90, 180, 90), zoomlevels=[2])
+        mb.run()
+
+        mbtiles_path = os.path.join(os.getcwd(), 'foo.mbtiles')
+        mbtiles = sqlite3.connect(mbtiles_path).cursor()
+        grid = mbtiles.execute("SELECT grid FROM grids WHERE zoom_level=2 AND tile_column=1 AND tile_row=1")
+        produced_data = json.loads(mb.grid((2, 1, 1)))['data']['39']['NAME']
+        expected_data = 'Costa Rica'
+        os.remove('foo.mbtiles')
+        self.assertEqual(produced_data, expected_data)
 
 class TestImageExporter(unittest.TestCase):
     def test_gridtiles(self):
@@ -170,7 +196,7 @@ class TestImageExporter(unittest.TestCase):
 
 
 class TestCache(unittest.TestCase):
-    temp_path = '/tmp/landez/stileopenstreetmaporg'
+    temp_path = os.path.join(tempfile.gettempdir(), 'landez/stileopenstreetmaporg')
 
     def clean(self):
         try:
