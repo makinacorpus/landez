@@ -164,6 +164,7 @@ class TestMBTilesBuilder(unittest.TestCase):
         os.remove('foo.mbtiles')
         self.assertEqual(produced_data, expected_data)
 
+
 class TestImageExporter(unittest.TestCase):
     def test_gridtiles(self):
         mb = ImageExporter()
@@ -222,11 +223,22 @@ class TestCache(unittest.TestCase):
         mb.cache.clean()
         self.assertFalse(os.path.exists(mb.cache.folder))
 
+    def test_cache_is_stored_at_WMTS_format(self):
+        tm = TilesManager(tiles_url="http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png")
+        tilecontent = tm.tile((12, 2064, 1495))
+        self.assertTrue(os.path.exists(os.path.join(self.temp_path, '12', '2064', '1495.png')))
+
+    def test_cache_is_stored_at_TMS_format(self):
+        tm = TilesManager(tiles_url="http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png")
+        tilecontent = tm.tile((12, 2064, 1495), flip=True)
+        self.assertTrue(os.path.exists(os.path.join(self.temp_path, '12', '2064', '2600.png')))
+
     def setUp(self):
         self.clean()
 
     def tearDown(self):
         self.clean()
+
 
 class TestLayers(unittest.TestCase):
     def test_cache_folder(self):

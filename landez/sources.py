@@ -10,6 +10,7 @@ import urllib
 import urllib2
 from urlparse import urlparse
 from tempfile import NamedTemporaryFile
+from util import flip_y
 
 
 has_mapnik = False
@@ -89,25 +90,25 @@ class MBTilesReader(TileSource):
 
     def tile(self, z, x, y):
         logger.debug(_("Extract tile %s") % ((z, x, y),))
-        y_mercator = (2**int(z) - 1) - int(y)
+        tms_y = flip_y(int(y), int(z))
         rows = self._query('''SELECT tile_data FROM tiles
-                              WHERE zoom_level=? AND tile_column=? AND tile_row=?;''', (z, x, y_mercator))
+                              WHERE zoom_level=? AND tile_column=? AND tile_row=?;''', (z, x, tms_y))
         t = rows.fetchone()
         if not t:
             raise ExtractionError(_("Could not extract tile %s from %s") % ((z, x, y), self.filename))
         return t[0]
 
     def grid(self, z, x, y, callback=None):
-        y_mercator = (2**int(z) - 1) - int(y)
+        tms_y = flip_y(int(y), int(z))
         rows = self._query('''SELECT grid FROM grids
-                              WHERE zoom_level=? AND tile_column=? AND tile_row=?;''', (z, x, y_mercator))
+                              WHERE zoom_level=? AND tile_column=? AND tile_row=?;''', (z, x, tms_y))
         t = rows.fetchone()
         if not t:
             raise ExtractionError(_("Could not extract grid %s from %s") % ((z, x, y), self.filename))
         grid_json = json.loads(zlib.decompress(t[0]))
 
         rows = self._query('''SELECT key_name, key_json FROM grid_data
-                              WHERE zoom_level=? AND tile_column=? AND tile_row=?;''', (z, x, y_mercator))
+                              WHERE zoom_level=? AND tile_column=? AND tile_row=?;''', (z, x, tms_y))
         # join up with the grid 'data' which is in pieces when stored in mbtiles file
         grid_json['data'] = {}
         grid_data = rows.fetchone()
