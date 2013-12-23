@@ -157,11 +157,13 @@ class TilesManager(object):
         self.cache.basename += filter_.basename
         self._filters.append(filter_)
 
-    def tile(self, (z, x, y)):
+    def tile(self, (z, x, y), flip=False):
         """
         Return the tile (binary) content of the tile and seed the cache.
         """
-        output = self.cache.read((z, x, y))
+        logger.debug(_("tile method called with %s") % ([z, x, y]))
+
+        output = self.cache.read((z, x, y), flip)
         if output is None:
             output = self.reader.tile(z, x, y)
             # Blend layers
@@ -173,14 +175,15 @@ class TilesManager(object):
                 image = f.process(self._tile_image(output))
                 output = self._image_tile(image)
             # Save result to cache
-            self.cache.save(output, (z, x, y))
+            self.cache.save(output, (z, x, y), flip)
+
             self.rendered += 1
         return output
 
     def grid(self, (z, x, y)):
         """ Return the UTFGrid content """
         # sources.py -> MapnikRenderer -> grid
-        content = self.reader.grid(z, x, y, self.grid_fields, self.grid_layer) 
+        content = self.reader.grid(z, x, y, self.grid_fields, self.grid_layer)
         return content
 
 
@@ -343,7 +346,8 @@ class MBTilesBuilder(TilesManager):
         self._clean_gather()
 
     def _gather(self, (z, x, y)):
-        files_dir, tile_name = self.cache.tile_file((z, x, y))
+        #MBTiles uses TMS internally so we have to flip y
+        files_dir, tile_name = self.cache.tile_file((z, x, y), flip=True)
         tmp_dir = os.path.join(self.tmp_dir, files_dir)
         if not os.path.isdir(tmp_dir):
             os.makedirs(tmp_dir)
