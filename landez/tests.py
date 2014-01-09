@@ -56,6 +56,16 @@ class TestTilesManager(unittest.TestCase):
         self.assertRaises(InvalidCoverageError, mb.tileslist, (-90.0, 180.0, 180.0, 90.0), [0])
         self.assertRaises(InvalidCoverageError, mb.tileslist, (-30.0, -90.0, -50.0, 90.0), [0])
 
+    def test_tileslist_at_z1_x0_y0(self):
+        mb = TilesManager()
+        l = mb.tileslist((-180.0, 1, -1, 90.0), [1])
+        self.assertEqual(l, [(1, 0, 0)])
+
+    def test_tileslist_at_z1_x0_y0_tms(self):
+        mb = TilesManager()
+        l = mb.tileslist((-180.0, 1, -1, 90.0), [1], scheme='tms')
+        self.assertEqual(l, [(1, 0, 1)])
+
     def test_download_tile(self):
         mb = TilesManager(cache=False)
         tile = (1, 1, 1)
@@ -164,6 +174,7 @@ class TestMBTilesBuilder(unittest.TestCase):
         os.remove('foo.mbtiles')
         self.assertEqual(produced_data, expected_data)
 
+
 class TestImageExporter(unittest.TestCase):
     def test_gridtiles(self):
         mb = ImageExporter()
@@ -222,11 +233,22 @@ class TestCache(unittest.TestCase):
         mb.cache.clean()
         self.assertFalse(os.path.exists(mb.cache.folder))
 
+    def test_cache_is_stored_at_WMTS_format(self):
+        tm = TilesManager(tiles_url="http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", cache=True, cache_scheme='wmts')
+        tilecontent = tm.tile((12, 2064, 1495))
+        self.assertTrue(os.path.exists(os.path.join(self.temp_path, '12', '2064', '1495.png')))
+
+    def test_cache_is_stored_at_TMS_format(self):
+        tm = TilesManager(tiles_url="http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", cache=True, cache_scheme='tms')
+        tilecontent = tm.tile((12, 2064, 1495))
+        self.assertTrue(os.path.exists(os.path.join(self.temp_path, '12', '2064', '2600.png')))
+
     def setUp(self):
         self.clean()
 
     def tearDown(self):
         self.clean()
+
 
 class TestLayers(unittest.TestCase):
     def test_cache_folder(self):

@@ -3,6 +3,7 @@ import re
 import logging
 import shutil
 from gettext import gettext as _
+from util import flip_y
 
 logger = logging.getLogger(__name__)
 
@@ -13,8 +14,8 @@ class Cache(object):
 
     def tile_file(self, (z, x, y)):
         tile_dir = os.path.join("%s" % z, "%s" % x)
-        y_mercator = (2**z - 1) - y
-        tile_name = "%s%s" % (y_mercator, self.extension)
+        y = flip_y(y, z)
+        tile_name = "%s%s" % (y, self.extension)
         return tile_dir, tile_name
 
     def read(self, (z, x, y)):
@@ -51,6 +52,7 @@ class Disk(Cache):
         self._basefolder = folder
         self.folder = folder
         self.basename = basename
+        self._scheme = 'tms'
 
     @property
     def basename(self):
@@ -61,6 +63,21 @@ class Disk(Cache):
         self._basename = basename
         subfolder = re.sub(r'[^a-z^A-Z^0-9]+', '', basename.lower())
         self.folder = os.path.join(self._basefolder, subfolder)
+
+    @property
+    def scheme(self):
+        return self._scheme
+
+    @scheme.setter
+    def scheme(self, scheme):
+        self._scheme = scheme
+
+    def tile_file(self, (z, x, y)):
+        tile_dir = os.path.join("%s" % z, "%s" % x)
+        if (self.scheme != 'wmts' and self.scheme != 'xyz'):
+            y = flip_y(y, z)
+        tile_name = "%s%s" % (y, self.extension)
+        return tile_dir, tile_name
 
     def tile_fullpath(self, (z, x, y)):
         tile_dir, tile_name = self.tile_file((z, x, y))
