@@ -64,6 +64,7 @@ class TestTilesManager(unittest.TestCase):
     def test_tileslist_at_z1_x0_y0_tms(self):
         mb = TilesManager()
         l = mb.tileslist((-180.0, 1, -1, 90.0), [1], scheme='tms')
+
         self.assertEqual(l, [(1, 0, 1)])
 
     def test_download_tile(self):
@@ -126,9 +127,9 @@ class TestMBTilesBuilder(unittest.TestCase):
         self.assertEqual(mb.nbtiles, 5)
         # Read from other mbtiles
         mb2 = MBTilesBuilder(filepath='small.mbtiles', mbtiles_file=mb.filepath, cache=False)
-        mb2.add_coverage(bbox=(-180.0, -90.0, 180.0, 90.0), zoomlevels=[1])
+        mb2.add_coverage(bbox=(-180.0, 1, -1, 90.0), zoomlevels=[1])
         mb2.run(force=True)
-        self.assertEqual(mb2.nbtiles, 4)
+        self.assertEqual(mb2.nbtiles, 1)
         os.remove('small.mbtiles')
         os.remove('big.mbtiles')
 

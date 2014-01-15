@@ -70,11 +70,11 @@ class Disk(Cache):
 
     @scheme.setter
     def scheme(self, scheme):
-        self._scheme = scheme
+        self._scheme = 'xyz' if (scheme == 'wmts') else scheme
 
     def tile_file(self, (z, x, y)):
         tile_dir = os.path.join("%s" % z, "%s" % x)
-        if (self.scheme != 'wmts' and self.scheme != 'xyz'):
+        if (self.scheme != 'xyz'):
             y = flip_y(y, z)
         tile_name = "%s%s" % (y, self.extension)
         return tile_dir, tile_name

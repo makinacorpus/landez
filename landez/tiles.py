@@ -124,6 +124,7 @@ class TilesManager(object):
                 self.cache.scheme = kwargs.get('cache_scheme')
         else:
             self.cache = Dummy(extension=self._tile_extension)
+            self.cache.scheme = 'tms'
 
         # Overlays
         self._layers = []
@@ -339,7 +340,12 @@ class MBTilesBuilder(TilesManager):
         # Package it!
         logger.info(_("Build MBTiles file '%s'.") % self.filepath)
         extension = self.tile_format.split("image/")[-1]
-        disk_to_mbtiles(self.tmp_dir, self.filepath, format=extension)
+        disk_to_mbtiles(
+            self.tmp_dir,
+            self.filepath,
+            format=extension,
+            scheme=self.cache.scheme
+        )
 
         try:
             os.remove("%s-journal" % self.filepath)  # created by mbutil
