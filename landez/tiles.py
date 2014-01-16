@@ -124,7 +124,6 @@ class TilesManager(object):
                 self.cache.scheme = kwargs.get('cache_scheme')
         else:
             self.cache = Dummy(extension=self._tile_extension)
-            self.cache.scheme = 'tms'
 
         # Overlays
         self._layers = []

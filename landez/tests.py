@@ -234,6 +234,10 @@ class TestCache(unittest.TestCase):
         mb.cache.clean()
         self.assertFalse(os.path.exists(mb.cache.folder))
 
+    def test_cache_scheme_wmts(self):
+        tm = TilesManager(tiles_url="http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", cache=True, cache_scheme='wmts')
+        self.assertEqual(tm.cache.scheme, 'xyz')
+
     def test_cache_is_stored_at_WMTS_format(self):
         tm = TilesManager(tiles_url="http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", cache=True, cache_scheme='wmts')
         tilecontent = tm.tile((12, 2064, 1495))

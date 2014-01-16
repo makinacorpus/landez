@@ -11,12 +11,17 @@ logger = logging.getLogger(__name__)
 class Cache(object):
     def __init__(self, **kwargs):
         self.extension = kwargs.get('extension', '.png')
+        self._scheme = 'tms'
 
     def tile_file(self, (z, x, y)):
         tile_dir = os.path.join("%s" % z, "%s" % x)
         y = flip_y(y, z)
         tile_name = "%s%s" % (y, self.extension)
         return tile_dir, tile_name
+
+    @property
+    def scheme(self):
+        return self._scheme
 
     def read(self, (z, x, y)):
         raise NotImplementedError
@@ -52,7 +57,6 @@ class Disk(Cache):
         self._basefolder = folder
         self.folder = folder
         self.basename = basename
-        self._scheme = 'tms'
 
     @property
     def basename(self):
@@ -64,11 +68,7 @@ class Disk(Cache):
         subfolder = re.sub(r'[^a-z^A-Z^0-9]+', '', basename.lower())
         self.folder = os.path.join(self._basefolder, subfolder)
 
-    @property
-    def scheme(self):
-        return self._scheme
-
-    @scheme.setter
+    @Cache.scheme.setter
     def scheme(self, scheme):
         self._scheme = 'xyz' if (scheme == 'wmts') else scheme
 
