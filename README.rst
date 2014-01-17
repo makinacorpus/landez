@@ -235,6 +235,14 @@ Manipulate tiles
         tilecontent = tm.tile(tile)  # download, extract or take from cache
         ...
 
+Cache is stored using TMS scheme by default (so the y value is flipped compared with WMTS scheme). To get it at WMTS standart, just specify:
+
+::
+
+    tm = TilesManager(your_sources_options, cache=True, cache_scheme="wmts")
+
+instead.
+
 
 Run tests
 =========
