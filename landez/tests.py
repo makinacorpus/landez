@@ -157,11 +157,11 @@ class TestMBTilesBuilder(unittest.TestCase):
     def test_grid_content(self):
         here = os.path.abspath(os.path.dirname(__file__))
         mb = MBTilesBuilder(
-            stylefile = os.path.join(here, "data_test", "stylesheet.xml"),
-            grid_fields = ["NAME"],
-            grid_layer = 0,
-            filepath = 'foo.mbtiles',
-            cache = False
+            stylefile=os.path.join(here, "data_test", "stylesheet.xml"),
+            grid_fields=["NAME"],
+            grid_layer=0,
+            filepath='foo.mbtiles',
+            cache=False
         )
 
         mb.add_coverage(bbox=(-180, -90, 180, 90), zoomlevels=[2])
@@ -234,9 +234,13 @@ class TestCache(unittest.TestCase):
         mb.cache.clean()
         self.assertFalse(os.path.exists(mb.cache.folder))
 
-    def test_cache_scheme_wmts(self):
+    def test_cache_scheme_WMTS(self):
         tm = TilesManager(tiles_url="http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", cache=True, cache_scheme='wmts')
         self.assertEqual(tm.cache.scheme, 'xyz')
+
+    def test_cache_with_bad_scheme(self):
+        with self.assertRaises(AssertionError):
+            TilesManager(tiles_url="http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", cache=True, cache_scheme='badscheme')
 
     def test_cache_is_stored_at_WMTS_format(self):
         tm = TilesManager(tiles_url="http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", cache=True, cache_scheme='wmts')
