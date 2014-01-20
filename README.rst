@@ -26,6 +26,8 @@ INSTALL
 
 *Landez* is pure python and has no external dependency.
 
+    sudo easy_install landez
+
 However, it requires `mapnik` if the tiles are rendered locally. ::
 
     sudo aptitude install python-mapnik
@@ -235,13 +237,11 @@ Manipulate tiles
         tilecontent = tm.tile(tile)  # download, extract or take from cache
         ...
 
-Cache is stored using TMS scheme by default (so the y value is flipped compared with WMTS scheme). To get it at WMTS standart, just specify:
+Cache tiles are stored using TMS scheme by default (with ``y`` value flipped). It can be changed to WMTS (a.k.a ``xyz``) :
 
 ::
 
     tm = TilesManager(your_sources_options, cache=True, cache_scheme="wmts")
-
-instead.
 
 
 Run tests
@@ -265,6 +265,7 @@ AUTHORS
     * Sergej Tatarincev
     * Éric Bréhault
     * Waldemar Osuch
+    * Isabelle Vallet
     * Thanks to mbutil authors <https://github.com/mapbox/mbutil>
 
 

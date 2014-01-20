@@ -70,8 +70,7 @@ class Disk(Cache):
 
     @Cache.scheme.setter
     def scheme(self, scheme):
-        if scheme not in ('wmts', 'xyz', 'tms'):
-            raise AssertionError("Unknown scheme %s" % scheme)
+        assert scheme in ('wmts', 'xyz', 'tms'), "Unknown scheme %s" % scheme
         self._scheme = 'xyz' if (scheme == 'wmts') else scheme
 
     def tile_file(self, (z, x, y)):
