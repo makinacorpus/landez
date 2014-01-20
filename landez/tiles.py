@@ -120,6 +120,8 @@ class TilesManager(object):
         tiles_dir = kwargs.get('tiles_dir', DEFAULT_TMP_DIR)
         if kwargs.get('cache', True):
             self.cache = Disk(self.reader.basename, tiles_dir, extension=self._tile_extension)
+            if kwargs.get('cache_scheme'):
+                self.cache.scheme = kwargs.get('cache_scheme')
         else:
             self.cache = Dummy(extension=self._tile_extension)
 
@@ -130,13 +132,13 @@ class TilesManager(object):
         # Number of tiles rendered/downloaded here
         self.rendered = 0
 
-    def tileslist(self, bbox, zoomlevels, tms_scheme=False):
+    def tileslist(self, bbox, zoomlevels, scheme='wmts'):
         """
         Build the tiles list within the bottom-left/top-right bounding
         box (minx, miny, maxx, maxy) at the specified zoom levels.
         Return a list of tuples (z,x,y)
         """
-        proj = GoogleProjection(self.tile_size, zoomlevels, tms_scheme)
+        proj = GoogleProjection(self.tile_size, zoomlevels, scheme)
         return proj.tileslist(bbox)
 
     def add_layer(self, tilemanager, opacity=1.0):
@@ -161,6 +163,8 @@ class TilesManager(object):
         """
         Return the tile (binary) content of the tile and seed the cache.
         """
+        logger.debug(_("tile method called with %s") % ([z, x, y]))
+
         output = self.cache.read((z, x, y))
         if output is None:
             output = self.reader.tile(z, x, y)
@@ -174,13 +178,14 @@ class TilesManager(object):
                 output = self._image_tile(image)
             # Save result to cache
             self.cache.save(output, (z, x, y))
+
             self.rendered += 1
         return output
 
     def grid(self, (z, x, y)):
         """ Return the UTFGrid content """
         # sources.py -> MapnikRenderer -> grid
-        content = self.reader.grid(z, x, y, self.grid_fields, self.grid_layer) 
+        content = self.reader.grid(z, x, y, self.grid_fields, self.grid_layer)
         return content
 
 
@@ -334,7 +339,12 @@ class MBTilesBuilder(TilesManager):
         # Package it!
         logger.info(_("Build MBTiles file '%s'.") % self.filepath)
         extension = self.tile_format.split("image/")[-1]
-        disk_to_mbtiles(self.tmp_dir, self.filepath, format=extension)
+        disk_to_mbtiles(
+            self.tmp_dir,
+            self.filepath,
+            format=extension,
+            scheme=self.cache.scheme
+        )
 
         try:
             os.remove("%s-journal" % self.filepath)  # created by mbutil
