@@ -24,7 +24,7 @@ The land covered is specified using a list of bounding boxes and zoom levels.
 INSTALL
 =======
 
-*Landez* is pure python and has no external dependency.
+*Landez* is pure python and has no external dependency. ::
 
     sudo easy_install landez
 
