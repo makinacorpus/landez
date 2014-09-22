@@ -6,6 +6,7 @@ CHANGELOG
 ==================
 
 * Add delay between tiles downloads retries (by @kiorky)
+* Add option to ignore errors during MBTiles creation (e.g. download errors)
 
 
 2.1.1 (2013-08-27)
@@ -42,7 +43,7 @@ CHANGELOG
 
 * Rework cache mechanism
 * Jpeg tiles support (#14)
-* Remove use of temporary files 
+* Remove use of temporary files
 * Image post-processing (#11)
 
 2.0.0-alpha (2012-05-23)

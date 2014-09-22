@@ -233,9 +233,11 @@ class MBTilesBuilder(TilesManager):
 
         filepath -- output MBTiles file (default DEFAULT_FILEPATH)
         tmp_dir -- temporary folder for gathering tiles (default DEFAULT_TMP_DIR/filepath)
+        ignore_errors -- ignore errors during MBTiles creation (e.g. download errors)
         """
         super(MBTilesBuilder, self).__init__(**kwargs)
         self.filepath = kwargs.get('filepath', DEFAULT_FILEPATH)
+        self.ignore_errors = kwargs.get('ignore_errors', False)
         # Gather tiles for mbutil
         basename, ext = os.path.splitext(os.path.basename(self.filepath))
         self.tmp_dir = kwargs.get('tmp_dir', DEFAULT_TMP_DIR)
@@ -310,7 +312,12 @@ class MBTilesBuilder(TilesManager):
         # Go through whole list of tiles and gather them in tmp_dir
         self.rendered = 0
         for (z, x, y) in tileslist:
-            self._gather((z, x, y))
+            try:
+                self._gather((z, x, y))
+            except Exception as e:
+                logger.warn(e)
+                if not self.ignore_errors:
+                    raise
 
         logger.debug(_("%s tiles were missing.") % self.rendered)
 
