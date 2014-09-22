@@ -63,7 +63,7 @@ class TestTilesManager(unittest.TestCase):
         content = mb.tile(tile)
         self.assertTrue(content is not None)
         # No subdomain keyword
-        mb = TilesManager(tiles_url="http://tile.cloudmade.com/f1fe9c2761a15118800b210c0eda823c/1/{size}/{z}/{x}/{y}.png")
+        mb = TilesManager(tiles_url="http://tile.openstreetmap.org/{z}/{x}/{y}.png")
         content = mb.tile(tile)
         self.assertTrue(content is not None)
         # Subdomain in available range
@@ -107,9 +107,17 @@ class TestMBTilesBuilder(unittest.TestCase):
         os.remove('small.mbtiles')
         os.remove('big.mbtiles')
 
+    def test_run_with_errors(self):
+        mb = MBTilesBuilder(tiles_url='http://foo.bar')
+        mb.add_coverage(bbox=(-180.0, -90.0, 180.0, 90.0), zoomlevels=[0, 1])
+        self.assertRaises(DownloadError, mb.run)
+        mb = MBTilesBuilder(tiles_url='http://foo.bar', ignore_errors=True)
+        mb.add_coverage(bbox=(-180.0, -90.0, 180.0, 90.0), zoomlevels=[0, 1])
+        mb.run()
+
     def test_run_jpeg(self):
         output = 'mq.mbtiles'
-        mb = MBTilesBuilder(filepath=output, 
+        mb = MBTilesBuilder(filepath=output,
                             tiles_url='http://oatile1.mqcdn.com/tiles/1.0.0/sat/{z}/{x}/{y}.jpg')
         mb.add_coverage(bbox=(1.3, 43.5, 1.6, 43.7), zoomlevels=[10])
         mb.run(force=True)
