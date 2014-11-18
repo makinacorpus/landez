@@ -95,7 +95,7 @@ class TilesManager(object):
             self.reader = MBTilesReader(self.mbtiles_file, self.tile_size)
         elif self.wms_server:
             assert self.wms_layers, _("Requires at least one layer (see ``wms_layers`` parameter)")
-            self.reader = WMSReader(self.wms_server, self.wms_layers,
+            self.reader = WMSReader(self.wms_server, self.wms_layers, self.tiles_headers,
                                     self.tile_size, **self.wms_options)
             if 'format' in self.wms_options:
                 self.tile_format = self.wms_options['format']

@@ -5,7 +5,7 @@ CHANGELOG
 2.2.1 (unreleased)
 ==================
 
-- Nothing changed yet.
+* Add headers to WMS sources if specified (thanks @sempixel!)
 
 
 2.2.0 (2014-09-22)
