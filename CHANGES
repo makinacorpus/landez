@@ -2,7 +2,7 @@
 CHANGELOG
 =========
 
-2.2.1 (unreleased)
+2.3.0 (2014-11-18)
 ==================
 
 * Add headers to WMS sources if specified (thanks @sempixel!)

@@ -7,7 +7,7 @@ here = os.path.abspath(os.path.dirname(__file__))
 
 setup(
     name='landez',
-    version='2.2.1.dev0',
+    version='2.3.0',
     author='Mathieu Leplatre',
     author_email='mathieu.leplatre@makina-corpus.com',
     url='https://github.com/makinacorpus/landez/',
@@ -28,7 +28,6 @@ setup(
     zip_safe=False,
     keywords=['MBTiles', 'Mapnik'],
     classifiers=['Programming Language :: Python :: 2.6',
-                 'Operating System :: Unix-based OS',
                  'Natural Language :: English',
                  'Topic :: Utilities',
                  'Development Status :: 5 - Production/Stable'],
