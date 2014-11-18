@@ -190,10 +190,11 @@ class TileDownloader(TileSource):
 
 
 class WMSReader(TileSource):
-    def __init__(self, url, layers, tilesize=None, **kwargs):
+    def __init__(self, url, layers, headers=None, tilesize=None, **kwargs):
         super(WMSReader, self).__init__(tilesize)
         self.basename = '-'.join(layers)
         self.url = url
+        self.headers = headers or {}
         self.wmsParams = dict(
             service='WMS',
             request='GetMap',
@@ -223,7 +224,10 @@ class WMSReader(TileSource):
         url += "&bbox=%s" % bbox   # commas are not encoded
         try:
             logger.debug(_("Download '%s'") % url)
-            f = urllib2.urlopen(url)
+            request = urllib2.Request(url)
+            for header, value in self.headers.items():
+                request.add_header(header, value)
+            f = urllib2.urlopen(request)
             header = f.info().typeheader
             assert header == self.wmsParams['format'], "Invalid WMS response type : %s" % header
             return f.read()
