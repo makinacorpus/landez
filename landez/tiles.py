@@ -4,7 +4,7 @@ import logging
 from gettext import gettext as _
 import json
 import mimetypes
-import string
+import uuid
 
 from StringIO import StringIO
 
@@ -326,6 +326,7 @@ class MBTilesBuilder(TilesManager):
         lat = self.bounds[1] + (self.bounds[3] - self.bounds[1])/2
         lon = self.bounds[0] + (self.bounds[2] - self.bounds[0])/2
         metadata = {}
+        metadata['name'] = str(uuid.uuid4())
         metadata['format'] = self._tile_extension[1:]
         metadata['minzoom'] = self.zoomlevels[0]
         metadata['maxzoom'] = self.zoomlevels[-1]
