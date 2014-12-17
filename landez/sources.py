@@ -152,7 +152,7 @@ class TileDownloader(TileSource):
         self.tiles_url = url
         self.tiles_subdomains = subdomains or ['a', 'b', 'c']
         parsed = urlparse(self.tiles_url)
-        self.basename = parsed.netloc
+        self.basename = parsed.netloc+parsed.path
         self.headers = headers or {}
 
     def tile(self, z, x, y):
