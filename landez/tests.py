@@ -96,7 +96,7 @@ class TestTilesManager(unittest.TestCase):
 
 
 class TestMBTilesBuilder(unittest.TestCase):
-    temp_cache = os.path.join(tempfile.gettempdir(), 'landez/stileopenstreetmaporg')
+    temp_cache = os.path.join(tempfile.gettempdir(), 'landez/stileopenstreetmaporg_z_x_ypng')
     temp_dir = os.path.join(tempfile.gettempdir(), 'landez/tiles')
 
     def tearDown(self):
@@ -216,7 +216,7 @@ class TestImageExporter(unittest.TestCase):
 
 
 class TestCache(unittest.TestCase):
-    temp_path = os.path.join(tempfile.gettempdir(), 'landez/stileopenstreetmaporg')
+    temp_path = os.path.join(tempfile.gettempdir(), 'landez/stileopenstreetmaporg_z_x_ypng')
 
     def clean(self):
         try:
