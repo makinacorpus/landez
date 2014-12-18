@@ -65,7 +65,7 @@ class Disk(Cache):
     @basename.setter
     def basename(self, basename):
         self._basename = basename
-        subfolder = re.sub(r'[^a-z^A-Z^0-9]+', '', basename.lower())
+        subfolder = re.sub(r'[^a-z^A-Z^0-9^_]+', '', basename.replace("/","_").lower())
         self.folder = os.path.join(self._basefolder, subfolder)
 
     @Cache.scheme.setter
