@@ -259,7 +259,11 @@ class MBTilesBuilder(TilesManager):
         """
         Return the list of covered zoom levels
         """
-        return self._bboxes[0][1]  #TODO: merge all coverages
+        zooms = set()
+        for coverage in self._bboxes:
+            for zoom in coverage[1]:
+                zooms.add(zoom)
+        return list(zooms)
 
     @property
     def bounds(self):
