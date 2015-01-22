@@ -188,11 +188,11 @@ class TestMBTilesBuilder(unittest.TestCase):
         mb.add_coverage(bbox=(-180.0, -90.0, 180.0, 90.0), zoomlevels=[0, 1])
         mb.add_coverage(bbox=(-180.0, -90.0, 180.0, 90.0), zoomlevels=[11, 12])
         mb.add_coverage(bbox=(-180.0, -90.0, 180.0, 90.0), zoomlevels=[5])
-        self.assertEqual(mb.zoomlevel[0], 0)
-        self.assertEqual(mb.zoomlevel[1], 1)
-        self.assertEqual(mb.zoomlevel[2], 5)
-        self.assertEqual(mb.zoomlevel[3], 11)
-        self.assertEqual(mb.zoomlevel[4], 12)
+        self.assertEqual(mb.zoomlevels[0], 0)
+        self.assertEqual(mb.zoomlevels[1], 1)
+        self.assertEqual(mb.zoomlevels[2], 5)
+        self.assertEqual(mb.zoomlevels[3], 11)
+        self.assertEqual(mb.zoomlevels[4], 12)
 
 
 class TestImageExporter(unittest.TestCase):
