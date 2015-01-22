@@ -257,13 +257,13 @@ class MBTilesBuilder(TilesManager):
     @property
     def zoomlevels(self):
         """
-        Return the list of covered zoom levels
+        Return the list of covered zoom levels, in ascending order
         """
         zooms = set()
         for coverage in self._bboxes:
             for zoom in coverage[1]:
                 zooms.add(zoom)
-        return list(zooms)
+        return list(zooms).sort()
 
     @property
     def bounds(self):
