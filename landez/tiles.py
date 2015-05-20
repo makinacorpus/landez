@@ -18,6 +18,11 @@ from cache import Disk, Dummy
 from sources import (MBTilesReader, TileDownloader, WMSReader,
                      MapnikRenderer, ExtractionError, DownloadError)
 
+
+# test threading
+import threading
+
+
 has_pil = False
 try:
     import Image
@@ -92,7 +97,7 @@ class TilesManager(object):
         self.wms_options = kwargs.get('wms_options', {})
 
         if self.mbtiles_file:
-            self.reader = MBTilesReader(self.mbtiles_file, self.tile_size)
+            self.reader = MBTilesReader(self.mbtilesfile, self.tile_size)
         elif self.wms_server:
             assert self.wms_layers, _("Requires at least one layer (see ``wms_layers`` parameter)")
             self.reader = WMSReader(self.wms_server, self.wms_layers, self.tiles_headers,
@@ -131,6 +136,8 @@ class TilesManager(object):
         self._filters = []
         # Number of tiles rendered/downloaded here
         self.rendered = 0
+
+        self.lock = threading.Lock()
 
     def tileslist(self, bbox, zoomlevels, scheme='wmts'):
         """
@@ -311,13 +318,22 @@ class MBTilesBuilder(TilesManager):
 
         # Go through whole list of tiles and gather them in tmp_dir
         self.rendered = 0
+
+        threadlist = []
+
         for (z, x, y) in tileslist:
             try:
-                self._gather((z, x, y))
+                t = threading.Thread(None, self._gather, None, ((z, x, y), ))
+                t.start()
+                threadlist.append(t)
             except Exception as e:
                 logger.warn(e)
                 if not self.ignore_errors:
                     raise
+
+        for t in threadlist:
+            if t.isAlive():
+                t.join()
 
         logger.debug(_("%s tiles were missing.") % self.rendered)
 
@@ -363,8 +379,10 @@ class MBTilesBuilder(TilesManager):
     def _gather(self, (z, x, y)):
         files_dir, tile_name = self.cache.tile_file((z, x, y))
         tmp_dir = os.path.join(self.tmp_dir, files_dir)
+        self.lock.acquire()
         if not os.path.isdir(tmp_dir):
             os.makedirs(tmp_dir)
+        self.lock.release()
         tilecontent = self.tile((z, x, y))
         tilepath = os.path.join(tmp_dir, tile_name)
         with open(tilepath, 'wb') as f:

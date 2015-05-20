@@ -1,3 +1,4 @@
+import threading
 import os
 import time
 import zlib
@@ -12,6 +13,8 @@ from urlparse import urlparse
 from tempfile import NamedTemporaryFile
 from util import flip_y
 
+import requests
+
 
 has_mapnik = False
 try:
@@ -21,7 +24,7 @@ except ImportError:
     pass
 
 
-from . import DEFAULT_TILE_FORMAT, DEFAULT_TILE_SIZE, DOWNLOAD_RETRIES
+from . import DEFAULT_TILE_FORMAT, DEFAULT_TILE_SIZE, DOWNLOAD_RETRIES, PARALLEL_DOWNLOADS_MAX
 from proj import GoogleProjection
 
 
@@ -154,6 +157,15 @@ class TileDownloader(TileSource):
         parsed = urlparse(self.tiles_url)
         self.basename = parsed.netloc+parsed.path
         self.headers = headers or {}
+        self.lock = threading.Lock()
+        self.count = []
+        self.sessions = []
+        for item in self.tiles_subdomains:
+            self.sessions.append(requests.session())
+            self.count.append(0)
+        self.request_header = {}
+        for header, value in self.headers.items():
+            self.request_header[header] = value
 
     def tile(self, z, x, y):
         """
@@ -162,7 +174,17 @@ class TileDownloader(TileSource):
         logger.debug(_("Download tile %s") % ((z, x, y),))
         # Render each keyword in URL ({s}, {x}, {y}, {z}, {size} ... )
         size = self.tilesize
-        s = self.tiles_subdomains[(x + y) % len(self.tiles_subdomains)];
+        subdomain = (x + y) % len(self.tiles_subdomains)
+        s = self.tiles_subdomains[subdomain]
+
+        self.lock.acquire()
+        while self.count[subdomain] > PARALLEL_DOWNLOADS_MAX:
+            self.lock.release()
+            time.sleep(0.5)
+            self.lock.acquire()
+        self.count[subdomain] += 1
+        self.lock.release()
+
         try:
             url = self.tiles_url.format(**locals())
         except KeyError, e:
@@ -173,12 +195,19 @@ class TileDownloader(TileSource):
         sleeptime = 1
         while r > 0:
             try:
+                r = self.sessions[subdomain].get(url, headers = self.request_header)
+                assert r.status_code == 200
+                self.count[subdomain] -= 1
+                return r.text
+                '''
                 request = urllib2.Request(url)
                 for header, value in self.headers.items():
                     request.add_header(header, value)
                 stream = urllib2.urlopen(request)
                 assert stream.getcode() == 200
+                self.count -= 1
                 return stream.read()
+                '''
             except (AssertionError, IOError), e:
                 logger.debug(_("Download error, retry (%s left). (%s)") % (r, e))
                 r -= 1
@@ -186,6 +215,7 @@ class TileDownloader(TileSource):
                 # progressivly sleep longer to wait for this tile
                 if (sleeptime <= 10) and (r % 2 == 0):
                     sleeptime += 1  # increase wait
+        self.count[subdomain] -= 1
         raise DownloadError(_("Cannot download URL %s") % url)
 
 
@@ -211,6 +241,8 @@ class WMSReader(TileSource):
         if parse_version(self.wmsParams['version']) >= parse_version('1.3'):
             projectionKey = 'crs'
         self.wmsParams[projectionKey] = GoogleProjection.NAME
+        self.lock = threading.Lock()
+        self.count = 0
 
     def tile(self, z, x, y):
         logger.debug(_("Request WMS tile %s") % ((z, x, y),))
@@ -222,6 +254,14 @@ class WMSReader(TileSource):
         encodedparams = urllib.urlencode(self.wmsParams)
         url = "%s?%s" % (self.url, encodedparams)
         url += "&bbox=%s" % bbox   # commas are not encoded
+
+        self.lock.acquire()
+        while self.count > PARALLEL_DOWNLOADS_MAX:
+            self.lock.release()
+            time.sleep(0.5)
+            self.lock.acquire()
+        self.count += 1
+        self.lock.release()
         try:
             logger.debug(_("Download '%s'") % url)
             request = urllib2.Request(url)
@@ -230,8 +270,10 @@ class WMSReader(TileSource):
             f = urllib2.urlopen(request)
             header = f.info().typeheader
             assert header == self.wmsParams['format'], "Invalid WMS response type : %s" % header
+            self.count -= 1
             return f.read()
         except (AssertionError, IOError):
+            self.count -= 1
             raise ExtractionError
 
 

@@ -15,6 +15,8 @@ DEFAULT_TILE_SIZE = 256
 DEFAULT_TILE_FORMAT = 'image/png'
 """ Number of retries for remove tiles downloading """
 DOWNLOAD_RETRIES = 10
+""" Maximum number of parallel downloads """
+PARALLEL_DOWNLOADS_MAX = 15
 """ Path to fonts for Mapnik rendering """
 TRUETYPE_FONTS_PATH = '/usr/share/fonts/truetype/'
 
