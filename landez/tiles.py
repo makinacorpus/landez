@@ -347,8 +347,15 @@ class MBTilesBuilder(TilesManager):
         if not self.ignore_errors and self.exception is not None:
             raise self.exception
 
-
-
+        if len(self.grid_fields) > 0:
+            for (z, x, y) in tileslist:
+                t = threading.Thread(None, self._gather_grid, None, ((z, x, y), ))
+                t.setDaemon(True)
+                t.start()
+                threadlist.append(t)
+            for t in threadlist:
+                if t.isAlive():
+                    t.join()
 
         logger.debug(_("%s tiles were missing.") % self.rendered)
 
@@ -402,11 +409,15 @@ class MBTilesBuilder(TilesManager):
         tilepath = os.path.join(tmp_dir, tile_name)
         with open(tilepath, 'wb') as f:
             f.write(tilecontent)
-        if len(self.grid_fields) > 0:
-            gridcontent = self.grid((z, x, y))
-            gridpath = "%s.%s" % (os.path.splitext(tilepath)[0], 'grid.json')
-            with open(gridpath, 'w') as f:
-                f.write(gridcontent)
+
+    def _gather_grid(self, (z, x, y)):
+        files_dir, tile_name = self.cache.tile_file((z, x, y))
+        tmp_dir = os.path.join(self.tmp_dir, files_dir)
+        tilepath = os.path.join(tmp_dir, tile_name)
+        gridcontent = self.grid((z, x, y))
+        gridpath = "%s.%s" % (os.path.splitext(tilepath)[0], 'grid.json')
+        with open(gridpath, 'w') as f:
+            f.write(gridcontent)
 
     def _clean_gather(self):
         logger.debug(_("Clean-up %s") % self.tmp_dir)

@@ -285,6 +285,7 @@ class MapnikRenderer(TileSource):
         self._mapnik = None
         self._prj = None
         self.error = False
+        self.lock = threading.Lock()
 
     def tile(self, z, x, y):
         """
@@ -324,7 +325,9 @@ class MapnikRenderer(TileSource):
         # Render image with default Agg renderer
         tmpfile = NamedTemporaryFile(delete=False)
         im = mapnik.Image(width, height)
+        self.lock.acquire()
         mapnik.render(self._mapnik, im)
+        self.lock.release()
         im.save(tmpfile.name, 'png256')  # TODO: mapnik output only to file?
         tmpfile.close()
         content = open(tmpfile.name).read()
