@@ -52,6 +52,7 @@ class TileSource(object):
             tilesize = DEFAULT_TILE_SIZE
         self.tilesize = tilesize
         self.basename = ''
+        self.error = False
 
     def tile(self, z, x, y):
         raise NotImplementedError
@@ -67,6 +68,7 @@ class MBTilesReader(TileSource):
         self.basename = os.path.basename(self.filename)
         self._con = None
         self._cur = None
+        self.error = False
 
     def _query(self, sql, *args):
         """ Executes the specified `sql` query and returns the cursor """
@@ -98,6 +100,7 @@ class MBTilesReader(TileSource):
                               WHERE zoom_level=? AND tile_column=? AND tile_row=?;''', (z, x, tms_y))
         t = rows.fetchone()
         if not t:
+            self.error = True
             raise ExtractionError(_("Could not extract tile %s from %s") % ((z, x, y), self.filename))
         return t[0]
 
@@ -166,6 +169,7 @@ class TileDownloader(TileSource):
         self.request_header = {}
         for header, value in self.headers.items():
             self.request_header[header] = value
+        self.error = False
 
     def tile(self, z, x, y):
         """
@@ -188,6 +192,7 @@ class TileDownloader(TileSource):
         try:
             url = self.tiles_url.format(**locals())
         except KeyError, e:
+            self.error = True
             raise DownloadError(_("Unknown keyword %s in URL") % e)
 
         logger.debug(_("Retrieve tile at %s") % url)
@@ -195,19 +200,10 @@ class TileDownloader(TileSource):
         sleeptime = 1
         while r > 0:
             try:
-                r = self.sessions[subdomain].get(url, headers = self.request_header)
-                assert r.status_code == 200
+                result = self.sessions[subdomain].get(url, headers = self.request_header)
+                assert result.status_code == 200
                 self.count[subdomain] -= 1
-                return r.text
-                '''
-                request = urllib2.Request(url)
-                for header, value in self.headers.items():
-                    request.add_header(header, value)
-                stream = urllib2.urlopen(request)
-                assert stream.getcode() == 200
-                self.count -= 1
-                return stream.read()
-                '''
+                return result.content
             except (AssertionError, IOError), e:
                 logger.debug(_("Download error, retry (%s left). (%s)") % (r, e))
                 r -= 1
@@ -216,6 +212,7 @@ class TileDownloader(TileSource):
                 if (sleeptime <= 10) and (r % 2 == 0):
                     sleeptime += 1  # increase wait
         self.count[subdomain] -= 1
+        self.error = True
         raise DownloadError(_("Cannot download URL %s") % url)
 
 
@@ -243,6 +240,7 @@ class WMSReader(TileSource):
         self.wmsParams[projectionKey] = GoogleProjection.NAME
         self.lock = threading.Lock()
         self.count = 0
+        self.error = False
 
     def tile(self, z, x, y):
         logger.debug(_("Request WMS tile %s") % ((z, x, y),))
@@ -274,6 +272,7 @@ class WMSReader(TileSource):
             return f.read()
         except (AssertionError, IOError):
             self.count -= 1
+            self.error = True
             raise ExtractionError
 
 
@@ -285,6 +284,7 @@ class MapnikRenderer(TileSource):
         self.basename = os.path.basename(self.stylefile)
         self._mapnik = None
         self._prj = None
+        self.error = False
 
     def tile(self, z, x, y):
         """

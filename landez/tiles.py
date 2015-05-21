@@ -44,6 +44,10 @@ class EmptyCoverageError(Exception):
     """ Raised when coverage (tiles list) is empty """
     pass
 
+class ThreadedException(Exception):
+    """ Raised when an exception occure in a thread"""
+    pass
+
 
 class TilesManager(object):
 
@@ -97,7 +101,7 @@ class TilesManager(object):
         self.wms_options = kwargs.get('wms_options', {})
 
         if self.mbtiles_file:
-            self.reader = MBTilesReader(self.mbtilesfile, self.tile_size)
+            self.reader = MBTilesReader(self.mbtiles_file, self.tile_size)
         elif self.wms_server:
             assert self.wms_layers, _("Requires at least one layer (see ``wms_layers`` parameter)")
             self.reader = WMSReader(self.wms_server, self.wms_layers, self.tiles_headers,
@@ -138,6 +142,8 @@ class TilesManager(object):
         self.rendered = 0
 
         self.lock = threading.Lock()
+        self.error = False
+        self.exception = None
 
     def tileslist(self, bbox, zoomlevels, scheme='wmts'):
         """
@@ -174,7 +180,12 @@ class TilesManager(object):
 
         output = self.cache.read((z, x, y))
         if output is None:
-            output = self.reader.tile(z, x, y)
+            try:
+                output = self.reader.tile(z, x, y)
+            except Exception as e:
+                self.error = True
+                self.exception = e
+                raise
             # Blend layers
             if len(self._layers) > 0:
                 logger.debug(_("Will blend %s layer(s)") % len(self._layers))
@@ -322,18 +333,22 @@ class MBTilesBuilder(TilesManager):
         threadlist = []
 
         for (z, x, y) in tileslist:
-            try:
-                t = threading.Thread(None, self._gather, None, ((z, x, y), ))
-                t.start()
-                threadlist.append(t)
-            except Exception as e:
-                logger.warn(e)
-                if not self.ignore_errors:
-                    raise
+            t = threading.Thread(None, self._gather, None, ((z, x, y), ))
+            t.setDaemon(True)
+            t.start()
+            threadlist.append(t)
 
         for t in threadlist:
             if t.isAlive():
                 t.join()
+            if self.error:
+                break
+
+        if not self.ignore_errors and self.exception is not None:
+            raise self.exception
+
+
+
 
         logger.debug(_("%s tiles were missing.") % self.rendered)
 
