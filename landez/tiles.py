@@ -45,7 +45,7 @@ class EmptyCoverageError(Exception):
     pass
 
 class ThreadedException(Exception):
-    """ Raised when an exception occure in a thread"""
+    """ Raised when an exception occurs in a thread"""
     pass
 
 
@@ -141,8 +141,7 @@ class TilesManager(object):
         # Number of tiles rendered/downloaded here
         self.rendered = 0
 
-        self.lock = threading.Lock()
-        self.error = False
+        self._lock = threading.Lock()
         self.exception = None
 
     def tileslist(self, bbox, zoomlevels, scheme='wmts'):
@@ -183,7 +182,6 @@ class TilesManager(object):
             try:
                 output = self.reader.tile(z, x, y)
             except Exception as e:
-                self.error = True
                 self.exception = e
                 raise
             # Blend layers
@@ -341,7 +339,7 @@ class MBTilesBuilder(TilesManager):
         for t in threadlist:
             if t.isAlive():
                 t.join()
-            if self.error:
+            if self.exception:
                 break
 
         if not self.ignore_errors and self.exception is not None:
@@ -401,10 +399,10 @@ class MBTilesBuilder(TilesManager):
     def _gather(self, (z, x, y)):
         files_dir, tile_name = self.cache.tile_file((z, x, y))
         tmp_dir = os.path.join(self.tmp_dir, files_dir)
-        self.lock.acquire()
+        self._lock.acquire()
         if not os.path.isdir(tmp_dir):
             os.makedirs(tmp_dir)
-        self.lock.release()
+        self._lock.release()
         tilecontent = self.tile((z, x, y))
         tilepath = os.path.join(tmp_dir, tile_name)
         with open(tilepath, 'wb') as f:
