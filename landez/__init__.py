@@ -13,10 +13,10 @@ DEFAULT_FILEPATH = os.path.join(os.getcwd(), "tiles.mbtiles")
 DEFAULT_TILE_SIZE = 256
 """ Default tile format (mime-type) """
 DEFAULT_TILE_FORMAT = 'image/png'
+""" Default number of threads (set to 0 for one tile by thread) """
+DEFAULT_THREAD_QUANTITY = 0
 """ Number of retries for remove tiles downloading """
 DOWNLOAD_RETRIES = 10
-""" Maximum number of parallel downloads """
-PARALLEL_DOWNLOADS_MAX = 15
 """ Path to fonts for Mapnik rendering """
 TRUETYPE_FONTS_PATH = '/usr/share/fonts/truetype/'
 

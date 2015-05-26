@@ -12,7 +12,7 @@ from mbutil import disk_to_mbtiles
 
 from . import (DEFAULT_TILES_URL, DEFAULT_TILES_SUBDOMAINS,
                DEFAULT_TMP_DIR, DEFAULT_FILEPATH, DEFAULT_TILE_SIZE,
-               DEFAULT_TILE_FORMAT)
+               DEFAULT_TILE_FORMAT, DEFAULT_THREAD_QUANTITY)
 from proj import GoogleProjection
 from cache import Disk, Dummy
 from sources import (MBTilesReader, TileDownloader, WMSReader,
@@ -250,10 +250,12 @@ class MBTilesBuilder(TilesManager):
         filepath -- output MBTiles file (default DEFAULT_FILEPATH)
         tmp_dir -- temporary folder for gathering tiles (default DEFAULT_TMP_DIR/filepath)
         ignore_errors -- ignore errors during MBTiles creation (e.g. download errors)
+        thread_quantity -- Number of threads to use for tiles creation
         """
         super(MBTilesBuilder, self).__init__(**kwargs)
         self.filepath = kwargs.get('filepath', DEFAULT_FILEPATH)
         self.ignore_errors = kwargs.get('ignore_errors', False)
+        self.thread_quantity = kwargs.get('thread_quantity', DEFAULT_THREAD_QUANTITY)
         # Gather tiles for mbutil
         basename, ext = os.path.splitext(os.path.basename(self.filepath))
         self.tmp_dir = kwargs.get('tmp_dir', DEFAULT_TMP_DIR)
@@ -330,8 +332,26 @@ class MBTilesBuilder(TilesManager):
 
         threadlist = []
 
-        for (z, x, y) in tileslist:
-            t = threading.Thread(None, self._gather, None, ((z, x, y), ))
+        # Split tiles to build equaly in each thread
+        threadcontent = []
+        tmp = []
+        c = 0
+        if self.thread_quantity is 0:
+            size_content = 1
+        else:
+            size_content = len(tileslist) / self.thread_quantity
+        for e in tileslist:
+            tmp.append(e)
+            c += 1
+            if c >= size_content:
+                c = 0
+                threadcontent.append(tmp)
+                tmp = []
+        if tmp is not []:
+            threadcontent.append(tmp)
+
+        for l in threadcontent:
+            t = threading.Thread(None, self._gather, None, (l, ))
             t.setDaemon(True)
             t.start()
             threadlist.append(t)
@@ -346,8 +366,8 @@ class MBTilesBuilder(TilesManager):
             raise self.exception
 
         if len(self.grid_fields) > 0:
-            for (z, x, y) in tileslist:
-                t = threading.Thread(None, self._gather_grid, None, ((z, x, y), ))
+            for l in threadcontent:
+                t = threading.Thread(None, self._gather_grid, None, (l, ))
                 t.setDaemon(True)
                 t.start()
                 threadlist.append(t)
@@ -396,26 +416,29 @@ class MBTilesBuilder(TilesManager):
             pass
         self._clean_gather()
 
-    def _gather(self, (z, x, y)):
-        files_dir, tile_name = self.cache.tile_file((z, x, y))
-        tmp_dir = os.path.join(self.tmp_dir, files_dir)
-        self._lock.acquire()
-        if not os.path.isdir(tmp_dir):
-            os.makedirs(tmp_dir)
-        self._lock.release()
-        tilecontent = self.tile((z, x, y))
-        tilepath = os.path.join(tmp_dir, tile_name)
-        with open(tilepath, 'wb') as f:
-            f.write(tilecontent)
 
-    def _gather_grid(self, (z, x, y)):
-        files_dir, tile_name = self.cache.tile_file((z, x, y))
-        tmp_dir = os.path.join(self.tmp_dir, files_dir)
-        tilepath = os.path.join(tmp_dir, tile_name)
-        gridcontent = self.grid((z, x, y))
-        gridpath = "%s.%s" % (os.path.splitext(tilepath)[0], 'grid.json')
-        with open(gridpath, 'w') as f:
-            f.write(gridcontent)
+    def _gather(self, tileslist):
+        for (z, x, y) in tileslist:
+            files_dir, tile_name = self.cache.tile_file((z, x, y))
+            tmp_dir = os.path.join(self.tmp_dir, files_dir)
+            self._lock.acquire()
+            if not os.path.isdir(tmp_dir):
+                os.makedirs(tmp_dir)
+            self._lock.release()
+            tilecontent = self.tile((z, x, y))
+            tilepath = os.path.join(tmp_dir, tile_name)
+            with open(tilepath, 'wb') as f:
+                f.write(tilecontent)
+
+    def _gather_grid(self, tileslist):
+        for (z, x, y) in tileslist:
+            files_dir, tile_name = self.cache.tile_file((z, x, y))
+            tmp_dir = os.path.join(self.tmp_dir, files_dir)
+            tilepath = os.path.join(tmp_dir, tile_name)
+            gridcontent = self.grid((z, x, y))
+            gridpath = "%s.%s" % (os.path.splitext(tilepath)[0], 'grid.json')
+            with open(gridpath, 'w') as f:
+                f.write(gridcontent)
 
     def _clean_gather(self):
         logger.debug(_("Clean-up %s") % self.tmp_dir)

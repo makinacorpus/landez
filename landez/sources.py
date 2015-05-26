@@ -24,7 +24,7 @@ except ImportError:
     pass
 
 
-from . import DEFAULT_TILE_FORMAT, DEFAULT_TILE_SIZE, DOWNLOAD_RETRIES, PARALLEL_DOWNLOADS_MAX
+from . import DEFAULT_TILE_FORMAT, DEFAULT_TILE_SIZE, DOWNLOAD_RETRIES
 from proj import GoogleProjection
 
 
@@ -159,12 +159,9 @@ class TileDownloader(TileSource):
         parsed = urlparse(self.tiles_url)
         self.basename = parsed.netloc+parsed.path
         self.headers = headers or {}
-        self._lock = threading.Lock()
-        self._count = []
         self._sessions = []
         for item in self.tiles_subdomains:
             self._sessions.append(requests.session())
-            self._count.append(0)
         self.request_header = {}
         for header, value in self.headers.items():
             self._request_header[header] = value
@@ -180,14 +177,6 @@ class TileDownloader(TileSource):
         subdomain = (x + y) % len(self.tiles_subdomains)
         s = self.tiles_subdomains[subdomain]
 
-        self._lock.acquire()
-        while self._count[subdomain] > PARALLEL_DOWNLOADS_MAX:
-            self._lock.release()
-            time.sleep(0.5)
-            self._lock.acquire()
-        self._count[subdomain] += 1
-        self._lock.release()
-
         try:
             url = self.tiles_url.format(**locals())
         except KeyError, e:
@@ -201,7 +190,6 @@ class TileDownloader(TileSource):
             try:
                 result = self._sessions[subdomain].get(url, headers = self.request_header)
                 assert result.status_code == 200
-                self._count[subdomain] -= 1
                 return result.content
             except (AssertionError, IOError), e:
                 logger.debug(_("Download error, retry (%s left). (%s)") % (r, e))
@@ -210,7 +198,6 @@ class TileDownloader(TileSource):
                 # progressivly sleep longer to wait for this tile
                 if (sleeptime <= 10) and (r % 2 == 0):
                     sleeptime += 1  # increase wait
-        self._count[subdomain] -= 1
         self._error = True
         raise DownloadError(_("Cannot download URL %s") % url)
 
@@ -237,8 +224,6 @@ class WMSReader(TileSource):
         if parse_version(self.wmsParams['version']) >= parse_version('1.3'):
             projectionKey = 'crs'
         self.wmsParams[projectionKey] = GoogleProjection.NAME
-        self._lock = threading.Lock()
-        self._count = 0
         self._error = False
 
     def tile(self, z, x, y):
@@ -252,13 +237,6 @@ class WMSReader(TileSource):
         url = "%s?%s" % (self.url, encodedparams)
         url += "&bbox=%s" % bbox   # commas are not encoded
 
-        self._lock.acquire()
-        while self._count > PARALLEL_DOWNLOADS_MAX:
-            self._lock.release()
-            time.sleep(0.5)
-            self._lock.acquire()
-        self._count += 1
-        self._lock.release()
         try:
             logger.debug(_("Download '%s'") % url)
             request = urllib2.Request(url)
@@ -267,10 +245,8 @@ class WMSReader(TileSource):
             f = urllib2.urlopen(request)
             header = f.info().typeheader
             assert header == self.wmsParams['format'], "Invalid WMS response type : %s" % header
-            self._count -= 1
             return f.read()
         except (AssertionError, IOError):
-            self._count -= 1
             self._error = True
             raise ExtractionError
 
