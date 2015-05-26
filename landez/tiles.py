@@ -352,7 +352,6 @@ class MBTilesBuilder(TilesManager):
 
         for l in threadcontent:
             t = threading.Thread(None, self._gather, None, (l, ))
-            t.setDaemon(True)
             t.start()
             threadlist.append(t)
 
@@ -368,7 +367,6 @@ class MBTilesBuilder(TilesManager):
         if len(self.grid_fields) > 0:
             for l in threadcontent:
                 t = threading.Thread(None, self._gather_grid, None, (l, ))
-                t.setDaemon(True)
                 t.start()
                 threadlist.append(t)
             for t in threadlist:
@@ -426,6 +424,8 @@ class MBTilesBuilder(TilesManager):
                 os.makedirs(tmp_dir)
             self._lock.release()
             tilecontent = self.tile((z, x, y))
+            if self.exception is not None and not self.ignore_errors:
+                break
             tilepath = os.path.join(tmp_dir, tile_name)
             with open(tilepath, 'wb') as f:
                 f.write(tilecontent)
