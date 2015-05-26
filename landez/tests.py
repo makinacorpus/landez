@@ -157,7 +157,7 @@ class TestMBTilesBuilder(unittest.TestCase):
         mb = MBTilesBuilder()
         self.assertEqual(mb.tmp_dir, self.temp_dir)
         self.assertFalse(os.path.exists(mb.tmp_dir))
-        mb._gather((1, 1, 1))
+        mb._gather([(1, 1, 1)])
         self.assertTrue(os.path.exists(mb.tmp_dir))
         mb._clean_gather()
         self.assertFalse(os.path.exists(mb.tmp_dir))

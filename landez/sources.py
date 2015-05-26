@@ -1,3 +1,4 @@
+import threading
 import os
 import time
 import zlib
@@ -11,6 +12,8 @@ import urllib2
 from urlparse import urlparse
 from tempfile import NamedTemporaryFile
 from util import flip_y
+
+import requests
 
 
 has_mapnik = False
@@ -42,13 +45,13 @@ class DownloadError(Exception):
     """ Raised when download at tiles URL fails DOWNLOAD_RETRIES times """
     pass
 
-
 class TileSource(object):
     def __init__(self, tilesize=None):
         if tilesize is None:
             tilesize = DEFAULT_TILE_SIZE
         self.tilesize = tilesize
         self.basename = ''
+        self._error = False
 
     def tile(self, z, x, y):
         raise NotImplementedError
@@ -64,6 +67,7 @@ class MBTilesReader(TileSource):
         self.basename = os.path.basename(self.filename)
         self._con = None
         self._cur = None
+        self._error = False
 
     def _query(self, sql, *args):
         """ Executes the specified `sql` query and returns the cursor """
@@ -95,6 +99,7 @@ class MBTilesReader(TileSource):
                               WHERE zoom_level=? AND tile_column=? AND tile_row=?;''', (z, x, tms_y))
         t = rows.fetchone()
         if not t:
+            self._error = True
             raise ExtractionError(_("Could not extract tile %s from %s") % ((z, x, y), self.filename))
         return t[0]
 
@@ -154,6 +159,13 @@ class TileDownloader(TileSource):
         parsed = urlparse(self.tiles_url)
         self.basename = parsed.netloc+parsed.path
         self.headers = headers or {}
+        self._sessions = []
+        for item in self.tiles_subdomains:
+            self._sessions.append(requests.session())
+        self.request_header = {}
+        for header, value in self.headers.items():
+            self._request_header[header] = value
+        self._error = False
 
     def tile(self, z, x, y):
         """
@@ -162,10 +174,13 @@ class TileDownloader(TileSource):
         logger.debug(_("Download tile %s") % ((z, x, y),))
         # Render each keyword in URL ({s}, {x}, {y}, {z}, {size} ... )
         size = self.tilesize
-        s = self.tiles_subdomains[(x + y) % len(self.tiles_subdomains)];
+        subdomain = (x + y) % len(self.tiles_subdomains)
+        s = self.tiles_subdomains[subdomain]
+
         try:
             url = self.tiles_url.format(**locals())
         except KeyError, e:
+            self._error = True
             raise DownloadError(_("Unknown keyword %s in URL") % e)
 
         logger.debug(_("Retrieve tile at %s") % url)
@@ -173,12 +188,9 @@ class TileDownloader(TileSource):
         sleeptime = 1
         while r > 0:
             try:
-                request = urllib2.Request(url)
-                for header, value in self.headers.items():
-                    request.add_header(header, value)
-                stream = urllib2.urlopen(request)
-                assert stream.getcode() == 200
-                return stream.read()
+                result = self._sessions[subdomain].get(url, headers = self.request_header)
+                assert result.status_code == 200
+                return result.content
             except (AssertionError, IOError), e:
                 logger.debug(_("Download error, retry (%s left). (%s)") % (r, e))
                 r -= 1
@@ -186,6 +198,7 @@ class TileDownloader(TileSource):
                 # progressivly sleep longer to wait for this tile
                 if (sleeptime <= 10) and (r % 2 == 0):
                     sleeptime += 1  # increase wait
+        self._error = True
         raise DownloadError(_("Cannot download URL %s") % url)
 
 
@@ -211,6 +224,7 @@ class WMSReader(TileSource):
         if parse_version(self.wmsParams['version']) >= parse_version('1.3'):
             projectionKey = 'crs'
         self.wmsParams[projectionKey] = GoogleProjection.NAME
+        self._error = False
 
     def tile(self, z, x, y):
         logger.debug(_("Request WMS tile %s") % ((z, x, y),))
@@ -222,6 +236,7 @@ class WMSReader(TileSource):
         encodedparams = urllib.urlencode(self.wmsParams)
         url = "%s?%s" % (self.url, encodedparams)
         url += "&bbox=%s" % bbox   # commas are not encoded
+
         try:
             logger.debug(_("Download '%s'") % url)
             request = urllib2.Request(url)
@@ -232,6 +247,7 @@ class WMSReader(TileSource):
             assert header == self.wmsParams['format'], "Invalid WMS response type : %s" % header
             return f.read()
         except (AssertionError, IOError):
+            self._error = True
             raise ExtractionError
 
 
@@ -243,6 +259,8 @@ class MapnikRenderer(TileSource):
         self.basename = os.path.basename(self.stylefile)
         self._mapnik = None
         self._prj = None
+        self._error = False
+        self._lock = threading.Lock()
 
     def tile(self, z, x, y):
         """
@@ -282,7 +300,9 @@ class MapnikRenderer(TileSource):
         # Render image with default Agg renderer
         tmpfile = NamedTemporaryFile(delete=False)
         im = mapnik.Image(width, height)
+        self._lock.acquire()
         mapnik.render(self._mapnik, im)
+        self._lock.release()
         im.save(tmpfile.name, 'png256')  # TODO: mapnik output only to file?
         tmpfile.close()
         content = open(tmpfile.name).read()
