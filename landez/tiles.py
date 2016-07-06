@@ -268,11 +268,13 @@ class MBTilesBuilder(TilesManager):
         """
         return self._bboxes[0][0]  #TODO: merge all coverages
 
-    def run(self, force=False):
+    def run(self, force=False, metadata={}):
         """
         Build a MBTile file.
 
         force -- overwrite if MBTiles file already exists.
+        metadata -- a dictionary object containing metadata key/values to set
+                    on metadata table
         """
         if os.path.exists(self.filepath):
             if force:
@@ -289,11 +291,11 @@ class MBTilesBuilder(TilesManager):
         # If no coverage added, use bottom layer metadata
         if len(self._bboxes) == 0 and len(self._layers) > 0:
             bottomlayer = self._layers[0]
-            metadata = bottomlayer.reader.metadata()
-            if 'bounds' in metadata:
+            base_metadata = bottomlayer.reader.metadata()
+            if 'bounds' in base_metadata:
                 logger.debug(_("Use bounds of bottom layer %s") % bottomlayer)
-                bbox = map(float, metadata.get('bounds', '').split(','))
-                zoomlevels = range(int(metadata.get('minzoom', 0)), int(metadata.get('maxzoom', 0)))
+                bbox = map(float, base_metadata.get('bounds', '').split(','))
+                zoomlevels = range(int(base_metadata.get('minzoom', 0)), int(base_metadata.get('maxzoom', 0)))
                 self.add_coverage(bbox=bbox, zoomlevels=zoomlevels)
 
         # Compute list of tiles
@@ -325,22 +327,25 @@ class MBTilesBuilder(TilesManager):
         middlezoom = self.zoomlevels[len(self.zoomlevels)/2]
         lat = self.bounds[1] + (self.bounds[3] - self.bounds[1])/2
         lon = self.bounds[0] + (self.bounds[2] - self.bounds[0])/2
-        metadata = {}
-        metadata['name'] = str(uuid.uuid4())
-        metadata['format'] = self._tile_extension[1:]
-        metadata['minzoom'] = self.zoomlevels[0]
-        metadata['maxzoom'] = self.zoomlevels[-1]
-        metadata['bounds'] = '%s,%s,%s,%s' % tuple(self.bounds)
-        metadata['center'] = '%s,%s,%s' % (lon, lat, middlezoom)
+        out_metadata = {}
+        out_metadata['version'] = metadata.get("version", "1.1")
+        out_metadata['type'] = metadata.get("type", "baselayer")
+        out_metadata['description'] = metadata.get("description", "created by landez")
+        out_metadata['name'] = metadata.get("name", str(uuid.uuid4()))
+        out_metadata['format'] = self._tile_extension[1:]
+        out_metadata['minzoom'] = self.zoomlevels[0]
+        out_metadata['maxzoom'] = self.zoomlevels[-1]
+        out_metadata['bounds'] = '%s,%s,%s,%s' % tuple(self.bounds)
+        out_metadata['center'] = '%s,%s,%s' % (lon, lat, middlezoom)
         #display informations from the grids on hover
         content_to_display = ''
         for field_name in self.grid_fields:
             content_to_display += "{{{ %s }}}<br>" % field_name
-        metadata['template'] = '{{#__location__}}{{/__location__}} {{#__teaser__}} \
+        out_metadata['template'] = '{{#__location__}}{{/__location__}} {{#__teaser__}} \
         %s {{/__teaser__}}{{#__full__}}{{/__full__}}' % content_to_display
         metadatafile = os.path.join(self.tmp_dir, 'metadata.json')
         with open(metadatafile, 'w') as output:
-            json.dump(metadata, output)
+            json.dump(out_metadata, output)
 
         # TODO: add UTF-Grid of last layer, if any
 
