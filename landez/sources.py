@@ -21,7 +21,7 @@ except ImportError:
     pass
 
 
-from . import DEFAULT_TILE_FORMAT, DEFAULT_TILE_SIZE, DOWNLOAD_RETRIES
+from . import DEFAULT_TILE_FORMAT, DEFAULT_TILE_SIZE, DEFAULT_TILE_SCHEME, DOWNLOAD_RETRIES
 from proj import GoogleProjection
 
 
@@ -201,6 +201,7 @@ class WMSReader(TileSource):
             version='1.1.1',
             styles='',
             format=DEFAULT_TILE_FORMAT,
+            scheme=DEFAULT_TILE_SCHEME,
             transparent=False,
             layers=','.join(layers),
             width=self.tilesize,
