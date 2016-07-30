@@ -1,4 +1,4 @@
-from math import pi, sin, log, exp, atan, tan
+from math import pi, sin, log, exp, atan, tan, ceil
 from gettext import gettext as _
 
 from . import DEFAULT_TILE_SIZE
@@ -119,11 +119,11 @@ class GoogleProjection(object):
             px1 = self.project_pixels(ll1,z)
 
             for x in range(int(px0[0]/self.tilesize),
-                           int(px1[0]/self.tilesize)+1):
+                           int(ceil(px1[0]/self.tilesize))):
                 if (x < 0) or (x >= 2**z):
                     continue
                 for y in range(int(px0[1]/self.tilesize),
-                               int(px1[1]/self.tilesize)+1):
+                               int(ceil(px1[1]/self.tilesize))):
                     if (y < 0) or (y >= 2**z):
                         continue
                     if self.scheme == 'tms':
