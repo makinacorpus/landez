@@ -13,6 +13,7 @@ DEFAULT_FILEPATH = os.path.join(os.getcwd(), "tiles.mbtiles")
 DEFAULT_TILE_SIZE = 256
 """ Default tile format (mime-type) """
 DEFAULT_TILE_FORMAT = 'image/png'
+DEFAULT_TILE_SCHEME = 'wmts'
 """ Number of retries for remove tiles downloading """
 DOWNLOAD_RETRIES = 10
 """ Path to fonts for Mapnik rendering """

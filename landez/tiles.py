@@ -12,7 +12,7 @@ from mbutil import disk_to_mbtiles
 
 from . import (DEFAULT_TILES_URL, DEFAULT_TILES_SUBDOMAINS,
                DEFAULT_TMP_DIR, DEFAULT_FILEPATH, DEFAULT_TILE_SIZE,
-               DEFAULT_TILE_FORMAT)
+               DEFAULT_TILE_FORMAT, DEFAULT_TILE_SCHEME)
 from proj import GoogleProjection
 from cache import Disk, Dummy
 from sources import (MBTilesReader, TileDownloader, WMSReader,
@@ -67,9 +67,11 @@ class TilesManager(object):
 
         tile_size -- default tile size (default DEFAULT_TILE_SIZE)
         tile_format -- default tile format (default DEFAULT_TILE_FORMAT)
+        tile_scheme -- default tile format (default DEFAULT_TILE_SCHEME)
         """
         self.tile_size = kwargs.get('tile_size', DEFAULT_TILE_SIZE)
         self.tile_format = kwargs.get('tile_format', DEFAULT_TILE_FORMAT)
+        self.tile_scheme = kwargs.get('tile_scheme', DEFAULT_TILE_SCHEME)
 
         # Tiles Download
         self.tiles_url = kwargs.get('tiles_url', DEFAULT_TILES_URL)
@@ -132,13 +134,13 @@ class TilesManager(object):
         # Number of tiles rendered/downloaded here
         self.rendered = 0
 
-    def tileslist(self, bbox, zoomlevels, scheme='wmts'):
+    def tileslist(self, bbox, zoomlevels):
         """
         Build the tiles list within the bottom-left/top-right bounding
         box (minx, miny, maxx, maxy) at the specified zoom levels.
         Return a list of tuples (z,x,y)
         """
-        proj = GoogleProjection(self.tile_size, zoomlevels, scheme)
+        proj = GoogleProjection(self.tile_size, zoomlevels, self.tile_scheme)
         return proj.tileslist(bbox)
 
     def add_layer(self, tilemanager, opacity=1.0):
@@ -409,7 +411,7 @@ class ImageExporter(TilesManager):
                 grid[y] = []
             grid[y].append(x)
         sortedgrid = []
-        for y in sorted(grid.keys()):
+        for y in sorted(grid.keys(), reverse=self.tile_scheme == 'tms'):
             sortedgrid.append([(x, y) for x in sorted(grid[y])])
         return sortedgrid
 
