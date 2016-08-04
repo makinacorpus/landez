@@ -66,6 +66,29 @@ class MBTilesReader(TileSource):
         self._cur = None
         self.tilescheme = tilescheme
 
+        # read the scheme from the metadata
+        metadata = self.metadata()
+        if 'scheme' in metadata:
+            self.tilescheme = metadata['scheme']
+        if self.tilescheme != 'xyz' and self.tilescheme != 'tms':
+            raise InvalidFormatError(_("unknown scheme: ") + scheme)
+        
+        # read tile size from file
+        from StringIO import StringIO
+        try:
+            import Image
+        except ImportError:
+            from PIL import Image
+
+        query = self._query('''SELECT zoom_level, tile_column, tile_row FROM tiles;''')
+        t = query.fetchone()
+        if self.tilescheme == 'tms':
+            t = t[0], t[1], flip_y(t[2], t[0])
+        img = Image.open(StringIO(apply(self.tile, t)))
+        if img.width != img.height:
+            raise InvalidFormatError(_("first tile not square"))
+        self.tilesize = img.width
+
     def _query(self, sql, *args):
         """ Executes the specified `sql` query and returns the cursor """
         if not self._con:
