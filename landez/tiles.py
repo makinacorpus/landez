@@ -94,7 +94,16 @@ class TilesManager(object):
         self.wms_options = kwargs.get('wms_options', {})
 
         if self.mbtiles_file:
-            self.reader = MBTilesReader(self.mbtiles_file, self.tile_size)
+            self.reader = MBTilesReader(self.mbtiles_file)
+            # read tile size from file
+            query = self.reader._query('''SELECT zoom_level, tile_column, tile_row FROM tiles;''')
+            t = query.fetchone()
+            img = Image.open(StringIO(apply(self.reader.tile, t)))
+            if img.width != img.height:
+                raise InvalidFormatError(_("first tile not square"))
+            tilesize = img.width
+            self.reader.tilesize = self.tile_size
+            
         elif self.wms_server:
             assert self.wms_layers, _("Requires at least one layer (see ``wms_layers`` parameter)")
             self.reader = WMSReader(self.wms_server, self.wms_layers, self.tiles_headers,
