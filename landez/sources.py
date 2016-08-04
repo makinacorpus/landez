@@ -58,12 +58,13 @@ class TileSource(object):
 
 
 class MBTilesReader(TileSource):
-    def __init__(self, filename, tilesize=None):
+    def __init__(self, filename, tilesize=None, tilescheme='xyz'):
         super(MBTilesReader, self).__init__(tilesize)
         self.filename = filename
         self.basename = os.path.basename(self.filename)
         self._con = None
         self._cur = None
+        self.tilescheme = tilescheme
 
     def _query(self, sql, *args):
         """ Executes the specified `sql` query and returns the cursor """
@@ -90,18 +91,20 @@ class MBTilesReader(TileSource):
 
     def tile(self, z, x, y):
         logger.debug(_("Extract tile %s") % ((z, x, y),))
-        tms_y = flip_y(int(y), int(z))
+        if self.tilescheme == 'tms':
+            y = flip_y(y, z)
         rows = self._query('''SELECT tile_data FROM tiles
-                              WHERE zoom_level=? AND tile_column=? AND tile_row=?;''', (z, x, tms_y))
+                              WHERE zoom_level=? AND tile_column=? AND tile_row=?;''', (z, x, y))
         t = rows.fetchone()
         if not t:
             raise ExtractionError(_("Could not extract tile %s from %s") % ((z, x, y), self.filename))
         return t[0]
 
     def grid(self, z, x, y, callback=None):
-        tms_y = flip_y(int(y), int(z))
+        if self.tilescheme == 'tms':
+            y = flip_y(y, z)
         rows = self._query('''SELECT grid FROM grids
-                              WHERE zoom_level=? AND tile_column=? AND tile_row=?;''', (z, x, tms_y))
+                              WHERE zoom_level=? AND tile_column=? AND tile_row=?;''', (z, x, y))
         t = rows.fetchone()
         if not t:
             raise ExtractionError(_("Could not extract grid %s from %s") % ((z, x, y), self.filename))
