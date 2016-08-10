@@ -444,7 +444,8 @@ class ImageExporter(TilesManager):
                 try:
                     img = self._tile_image(tiledata)
                 except:
-                    raise CorruptTileData(_("Tile has invalid/corrupt data" + str((zoomlevel, x, y))))
+                    print "Tile has invalid/corrupt data" + str((zoomlevel, x, y))
+                    continue;
                 result.paste(img, offset)
 
         logger.info(_("Save resulting image to '%s'") % imagepath)
