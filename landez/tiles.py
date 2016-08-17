@@ -421,7 +421,7 @@ class ImageExporter(TilesManager):
         sortedgrid = []
 #        for y in sorted(grid.keys(), reverse=self.tile_scheme == 'tms'):
         for y in sorted(grid.keys()):
-            sortedgrid.append([(x, y) for x in sorted(grid[y])])
+            sortedgrid.append([(x, y) for x in grid[y]])
         return sortedgrid
 
     def export_image(self, bbox, zoomlevel, imagepath):
