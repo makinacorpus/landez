@@ -62,8 +62,8 @@ class TestTilesManager(unittest.TestCase):
         self.assertEqual(l, [(1, 0, 0)])
 
     def test_tileslist_at_z1_x0_y0_tms(self):
-        mb = TilesManager()
-        l = mb.tileslist((-180.0, 1, -1, 90.0), [1], scheme='tms')
+        mb = TilesManager(tile_scheme='tms')
+        l = mb.tileslist((-180.0, 1, -1, 90.0), [1])
 
         self.assertEqual(l, [(1, 0, 1)])
 
