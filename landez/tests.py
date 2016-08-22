@@ -183,6 +183,17 @@ class TestMBTilesBuilder(unittest.TestCase):
         os.remove('foo.mbtiles')
         self.assertEqual(produced_data, expected_data)
 
+    def test_zoomlevels(self):
+        mb = MBTilesBuilder()
+        mb.add_coverage(bbox=(-180.0, -90.0, 180.0, 90.0), zoomlevels=[0, 1])
+        mb.add_coverage(bbox=(-180.0, -90.0, 180.0, 90.0), zoomlevels=[11, 12])
+        mb.add_coverage(bbox=(-180.0, -90.0, 180.0, 90.0), zoomlevels=[5])
+        self.assertEqual(mb.zoomlevels[0], 0)
+        self.assertEqual(mb.zoomlevels[1], 1)
+        self.assertEqual(mb.zoomlevels[2], 5)
+        self.assertEqual(mb.zoomlevels[3], 11)
+        self.assertEqual(mb.zoomlevels[4], 12)
+
 
 class TestImageExporter(unittest.TestCase):
     def test_gridtiles(self):
