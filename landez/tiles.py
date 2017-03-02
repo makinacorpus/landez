@@ -201,17 +201,20 @@ class TilesManager(object):
             try:
                 # Prepare tile of overlay, if available
                 overlay = self._tile_image(layer.tile((z, x, y)))
-            except (DownloadError, ExtractionError), e:
-                logger.warn(e)
+                if overlay:
+                    # Extract alpha mask
+                    overlay = overlay.convert("RGBA")
+                    r, g, b, a = overlay.split()
+                    overlay = Image.merge("RGB", (r, g, b))
+                    a = ImageEnhance.Brightness(a).enhance(opacity)
+                    overlay.putalpha(a)
+                    mask = Image.merge("L", (a,))
+                    result.paste(overlay, (0, 0), mask)
+
+            except (DownloadError, ExtractionError) as exc:
+                logger.warn(exc)
                 continue
-            # Extract alpha mask
-            overlay = overlay.convert("RGBA")
-            r, g, b, a = overlay.split()
-            overlay = Image.merge("RGB", (r, g, b))
-            a = ImageEnhance.Brightness(a).enhance(opacity)
-            overlay.putalpha(a)
-            mask = Image.merge("L", (a,))
-            result.paste(overlay, (0, 0), mask)
+
         # Read result
         return self._image_tile(result)
 
@@ -219,8 +222,11 @@ class TilesManager(object):
         """
         Tile binary content as PIL Image.
         """
-        image = Image.open(StringIO(data))
-        return image.convert('RGBA')
+        try:
+            image = Image.open(StringIO(data))
+            return image.convert('RGBA')
+        except:
+            return None
 
     def _image_tile(self, image):
         out = StringIO()
