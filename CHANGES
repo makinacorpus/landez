@@ -2,10 +2,17 @@
 CHANGELOG
 =========
 
-2.3.1 (unreleased)
+2.4.0 (2017-03-02)
 ==================
 
-- Nothing changed yet.
+* Do not crash when overlay tile data is not a valid image
+* Correctly generate metadata for zoom levels
+* Add support for tms mbtiles
+* Correct tile box calculation for case when floating point value is an integer
+* Correctly generate metadata for zoom levels
+* Use the full path to construct the cache directory, as otherwise different
+  tiles sets on the same server are considered to be the same one
+* Added a name metadata to prevent Maptiler crash
 
 
 2.3.0 (2014-11-18)
