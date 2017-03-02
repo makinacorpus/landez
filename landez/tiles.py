@@ -201,7 +201,7 @@ class TilesManager(object):
             try:
                 # Prepare tile of overlay, if available
                 overlay = self._tile_image(layer.tile((z, x, y)))
-            except (DownloadError, ExtractionError), e:
+            except (IOError, DownloadError, ExtractionError), e:
                 logger.warn(e)
                 continue
             # Extract alpha mask
