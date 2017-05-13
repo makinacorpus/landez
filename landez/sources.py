@@ -80,14 +80,22 @@ class MBTilesReader(TileSource):
         except ImportError:
             from PIL import Image
 
-        query = self._query('''SELECT zoom_level, tile_column, tile_row FROM tiles;''')
-        t = query.fetchone()
-        if self.tilescheme == 'tms':
-            t = t[0], t[1], flip_y(t[2], t[0])
-        img = Image.open(StringIO(apply(self.tile, t)))
-        if img.width != img.height:
-            raise InvalidFormatError(_("first tile not square"))
-        self.tilesize = img.width
+        for z in self.zoomlevels():
+            query = self._query('''SELECT zoom_level, tile_column, tile_row FROM tiles
+                                   WHERE zoom_level=? ;''', (z, ))
+            try:
+                t = query.fetchone()
+                if self.tilescheme == 'tms':
+                    t = t[0], t[1], flip_y(t[2], t[0])
+                img = Image.open(StringIO(apply(self.tile, t)))
+                
+                if img.width != img.height:
+                    raise InvalidFormatError(_("tile not square!") + t)
+                self.tilesize = img.width
+                return
+            except IOError:
+                print 'invalid tile at zoom level', z
+        print 'no valid first tiles found in any zoom level!'
 
     def _query(self, sql, *args):
         """ Executes the specified `sql` query and returns the cursor """
