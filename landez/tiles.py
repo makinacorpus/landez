@@ -5,6 +5,7 @@ from gettext import gettext as _
 import json
 import mimetypes
 import uuid
+from util import flip_y
 
 from StringIO import StringIO
 
@@ -37,6 +38,10 @@ logger = logging.getLogger(__name__)
 
 class EmptyCoverageError(Exception):
     """ Raised when coverage (tiles list) is empty """
+    pass
+
+class CorruptTileData(Exception):
+    """ Raised when tile is corrupt """
     pass
 
 
@@ -94,7 +99,10 @@ class TilesManager(object):
         self.wms_options = kwargs.get('wms_options', {})
 
         if self.mbtiles_file:
-            self.reader = MBTilesReader(self.mbtiles_file, self.tile_size)
+            self.reader = MBTilesReader(self.mbtiles_file)
+            self.tile_scheme=self.reader.tilescheme
+            self.tile_size=self.reader.tilesize
+            
         elif self.wms_server:
             assert self.wms_layers, _("Requires at least one layer (see ``wms_layers`` parameter)")
             self.reader = WMSReader(self.wms_server, self.wms_layers, self.tiles_headers,
@@ -140,7 +148,7 @@ class TilesManager(object):
         box (minx, miny, maxx, maxy) at the specified zoom levels.
         Return a list of tuples (z,x,y)
         """
-        proj = GoogleProjection(self.tile_size, zoomlevels, self.tile_scheme)
+        proj = GoogleProjection(self.tile_size, zoomlevels)
         return proj.tileslist(bbox)
 
     def add_layer(self, tilemanager, opacity=1.0):
@@ -415,8 +423,9 @@ class ImageExporter(TilesManager):
                 grid[y] = []
             grid[y].append(x)
         sortedgrid = []
-        for y in sorted(grid.keys(), reverse=self.tile_scheme == 'tms'):
-            sortedgrid.append([(x, y) for x in sorted(grid[y])])
+#        for y in sorted(grid.keys(), reverse=self.tile_scheme == 'tms'):
+        for y in sorted(grid.keys()):
+            sortedgrid.append([(x, y) for x in grid[y]])
         return sortedgrid
 
     def export_image(self, bbox, zoomlevel, imagepath):
@@ -435,7 +444,13 @@ class ImageExporter(TilesManager):
         for i, row in enumerate(grid):
             for j, (x, y) in enumerate(row):
                 offset = (j * self.tile_size, i * self.tile_size)
-                img = self._tile_image(self.tile((zoomlevel, x, y)))
+                tiledata = self.tile((zoomlevel, x, y))
+                try:
+                    img = self._tile_image(tiledata)
+                except:
+                    print "Tile has invalid/corrupt data" + str((zoomlevel, x, y))
+                    continue;
                 result.paste(img, offset)
+
         logger.info(_("Save resulting image to '%s'") % imagepath)
         result.save(imagepath)

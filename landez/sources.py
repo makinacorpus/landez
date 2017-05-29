@@ -58,12 +58,44 @@ class TileSource(object):
 
 
 class MBTilesReader(TileSource):
-    def __init__(self, filename, tilesize=None):
+    def __init__(self, filename, tilesize=None, tilescheme='xyz'):
         super(MBTilesReader, self).__init__(tilesize)
         self.filename = filename
         self.basename = os.path.basename(self.filename)
         self._con = None
         self._cur = None
+        self.tilescheme = tilescheme
+
+        # read the scheme from the metadata
+        metadata = self.metadata()
+        if 'scheme' in metadata:
+            self.tilescheme = metadata['scheme']
+        if self.tilescheme != 'xyz' and self.tilescheme != 'tms':
+            raise InvalidFormatError(_("unknown scheme: ") + scheme)
+        
+        # read tile size from file
+        from StringIO import StringIO
+        try:
+            import Image
+        except ImportError:
+            from PIL import Image
+
+        for z in self.zoomlevels():
+            query = self._query('''SELECT zoom_level, tile_column, tile_row FROM tiles
+                                   WHERE zoom_level=? ;''', (z, ))
+            try:
+                t = query.fetchone()
+                if self.tilescheme == 'tms':
+                    t = t[0], t[1], flip_y(t[2], t[0])
+                img = Image.open(StringIO(apply(self.tile, t)))
+                
+                if img.width != img.height:
+                    raise InvalidFormatError(_("tile not square!") + t)
+                self.tilesize = img.width
+                return
+            except IOError:
+                print 'invalid tile at zoom level', z
+        print 'no valid first tiles found in any zoom level!'
 
     def _query(self, sql, *args):
         """ Executes the specified `sql` query and returns the cursor """
@@ -90,18 +122,20 @@ class MBTilesReader(TileSource):
 
     def tile(self, z, x, y):
         logger.debug(_("Extract tile %s") % ((z, x, y),))
-        tms_y = flip_y(int(y), int(z))
+        if self.tilescheme == 'tms':
+            y = flip_y(y, z)
         rows = self._query('''SELECT tile_data FROM tiles
-                              WHERE zoom_level=? AND tile_column=? AND tile_row=?;''', (z, x, tms_y))
+                              WHERE zoom_level=? AND tile_column=? AND tile_row=?;''', (z, x, y))
         t = rows.fetchone()
         if not t:
             raise ExtractionError(_("Could not extract tile %s from %s") % ((z, x, y), self.filename))
         return t[0]
 
     def grid(self, z, x, y, callback=None):
-        tms_y = flip_y(int(y), int(z))
+        if self.tilescheme == 'tms':
+            y = flip_y(y, z)
         rows = self._query('''SELECT grid FROM grids
-                              WHERE zoom_level=? AND tile_column=? AND tile_row=?;''', (z, x, tms_y))
+                              WHERE zoom_level=? AND tile_column=? AND tile_row=?;''', (z, x, y))
         t = rows.fetchone()
         if not t:
             raise ExtractionError(_("Could not extract grid %s from %s") % ((z, x, y), self.filename))

@@ -103,12 +103,21 @@ class GoogleProjection(object):
         if len(bbox) != 4:
             raise InvalidCoverageError(_("Wrong format of bounding box."))
         xmin, ymin, xmax, ymax = bbox
-        if abs(xmin) > 180 or abs(xmax) > 180 or \
+
+        if xmin >= 180:
+            xmin = xmin - 360
+            xmax = xmax - 360
+
+        if abs(xmin) > 180 or abs(xmax) < -180 or xmax - xmin > 360 or \
            abs(ymin) > 90 or abs(ymax) > 90:
             raise InvalidCoverageError(_("Some coordinates exceed [-180,+180], [-90, 90]."))
 
         if xmin >= xmax or ymin >= ymax:
             raise InvalidCoverageError(_("Bounding box format is (xmin, ymin, xmax, ymax)"))
+
+        if xmin < -180:
+            xmin = xmin + 360
+            xmax = xmax + 360
 
         ll0 = (xmin, ymax)  # left top
         ll1 = (xmax, ymin)  # right bottom
@@ -118,12 +127,20 @@ class GoogleProjection(object):
             px0 = self.project_pixels(ll0,z)
             px1 = self.project_pixels(ll1,z)
 
-            for x in range(int(px0[0]/self.tilesize),
-                           int(ceil(px1[0]/self.tilesize))):
+            txmin = int(px0[0]/self.tilesize)
+            txmax = int(ceil(px1[0]/self.tilesize))
+            c = 2**z
+            if txmax > c:
+                xrange = range(txmin, c) + range(0, txmax - c)
+            else:
+                xrange = range(txmin, txmax)
+            
+            yrange = range(int(px0[1]/self.tilesize), int(ceil(px1[1]/self.tilesize)))
+
+            for x in xrange:
                 if (x < 0) or (x >= 2**z):
                     continue
-                for y in range(int(px0[1]/self.tilesize),
-                               int(ceil(px1[1]/self.tilesize))):
+                for y in yrange:
                     if (y < 0) or (y >= 2**z):
                         continue
                     if self.scheme == 'tms':
