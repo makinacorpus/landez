@@ -204,7 +204,7 @@ class TilesManager(object):
             try:
                 # Prepare tile of overlay, if available
                 overlay = self._tile_image(layer.tile((z, x, y)))
-            except (IOError, DownloadError, ExtractionError), e:
+            except (IOError, DownloadError, ExtractionError)as e:
                 logger.warn(e)
                 continue
             # Extract alpha mask
@@ -365,7 +365,7 @@ class MBTilesBuilder(TilesManager):
 
         try:
             os.remove("%s-journal" % self.filepath)  # created by mbutil
-        except OSError, e:
+        except OSError as e:
             pass
         self._clean_gather()
 
