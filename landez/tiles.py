@@ -6,7 +6,7 @@ import json
 import mimetypes
 import uuid
 
-from StringIO import StringIO
+from io import StringIO
 
 from mbutil import disk_to_mbtiles
 

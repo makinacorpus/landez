@@ -7,8 +7,8 @@ import json
 from gettext import gettext as _
 from pkg_resources import parse_version
 import urllib
-import urllib2
-from urlparse import urlparse
+from urllib import request as urllib2
+from urllib import parse as urlparse
 from tempfile import NamedTemporaryFile
 from .util import flip_y
 
