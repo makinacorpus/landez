@@ -13,9 +13,9 @@ from mbutil import disk_to_mbtiles
 from . import (DEFAULT_TILES_URL, DEFAULT_TILES_SUBDOMAINS,
                DEFAULT_TMP_DIR, DEFAULT_FILEPATH, DEFAULT_TILE_SIZE,
                DEFAULT_TILE_FORMAT, DEFAULT_TILE_SCHEME)
-from proj import GoogleProjection
-from cache import Disk, Dummy
-from sources import (MBTilesReader, TileDownloader, WMSReader,
+from .proj import GoogleProjection
+from .cache import Disk, Dummy
+from .sources import (MBTilesReader, TileDownloader, WMSReader,
                      MapnikRenderer, ExtractionError, DownloadError)
 
 has_pil = False

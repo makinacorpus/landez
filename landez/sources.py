@@ -10,7 +10,7 @@ import urllib
 import urllib2
 from urlparse import urlparse
 from tempfile import NamedTemporaryFile
-from util import flip_y
+from .util import flip_y
 
 
 has_mapnik = False
@@ -22,7 +22,7 @@ except ImportError:
 
 
 from . import DEFAULT_TILE_FORMAT, DEFAULT_TILE_SIZE, DEFAULT_TILE_SCHEME, DOWNLOAD_RETRIES
-from proj import GoogleProjection
+from .proj import GoogleProjection
 
 
 logger = logging.getLogger(__name__)

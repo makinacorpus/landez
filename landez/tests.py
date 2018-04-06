@@ -6,11 +6,11 @@ import tempfile
 import json
 import sqlite3
 
-from tiles import (TilesManager, MBTilesBuilder, ImageExporter,
+from .tiles import (TilesManager, MBTilesBuilder, ImageExporter,
                    EmptyCoverageError, DownloadError)
-from proj import InvalidCoverageError
-from cache import Disk
-from sources import MBTilesReader
+from .proj import InvalidCoverageError
+from .cache import Disk
+from .sources import MBTilesReader
 
 
 class TestTilesManager(unittest.TestCase):

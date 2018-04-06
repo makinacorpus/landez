@@ -3,7 +3,7 @@ import re
 import logging
 import shutil
 from gettext import gettext as _
-from util import flip_y
+from .util import flip_y
 
 logger = logging.getLogger(__name__)
 
