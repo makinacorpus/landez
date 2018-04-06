@@ -161,10 +161,11 @@ class TilesManager(object):
         self.cache.basename += filter_.basename
         self._filters.append(filter_)
 
-    def tile(self, (z, x, y)):
+    def tile(self, z_x_y):
         """
         Return the tile (binary) content of the tile and seed the cache.
         """
+        (z, x, y) = z_x_y
         logger.debug(_("tile method called with %s") % ([z, x, y]))
 
         output = self.cache.read((z, x, y))
@@ -184,17 +185,19 @@ class TilesManager(object):
             self.rendered += 1
         return output
 
-    def grid(self, (z, x, y)):
+    def grid(self, z_x_y):
         """ Return the UTFGrid content """
         # sources.py -> MapnikRenderer -> grid
+        (z, x, y) = z_x_y
         content = self.reader.grid(z, x, y, self.grid_fields, self.grid_layer)
         return content
 
 
-    def _blend_layers(self, imagecontent, (z, x, y)):
+    def _blend_layers(self, imagecontent, z_x_y):
         """
         Merge tiles of all layers into the specified tile path
         """
+        (z, x, y) = z_x_y
         result = self._tile_image(imagecontent)
         # Paste each layer
         for (layer, opacity) in self._layers:
@@ -366,7 +369,8 @@ class MBTilesBuilder(TilesManager):
             pass
         self._clean_gather()
 
-    def _gather(self, (z, x, y)):
+    def _gather(self, z_x_y):
+        (z, x, y) = z_x_y
         files_dir, tile_name = self.cache.tile_file((z, x, y))
         tmp_dir = os.path.join(self.tmp_dir, files_dir)
         if not os.path.isdir(tmp_dir):
