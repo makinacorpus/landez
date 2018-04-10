@@ -26,7 +26,7 @@ class TestTilesManager(unittest.TestCase):
         # Format from URL extension
         mb = TilesManager(tiles_url='http://tileserver/{z}/{x}/{y}.jpg')
         self.assertEqual(mb.tile_format, 'image/jpeg')
-        self.assertEqual(mb.cache.extension, '.jpeg')
+        self.assertEqual(mb.cache.extension, '.jpg')
         mb = TilesManager(tiles_url='http://tileserver/{z}/{x}/{y}.png')
         self.assertEqual(mb.tile_format, 'image/png')
         self.assertEqual(mb.cache.extension, '.png')
