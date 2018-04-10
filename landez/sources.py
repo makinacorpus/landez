@@ -8,7 +8,7 @@ from gettext import gettext as _
 from pkg_resources import parse_version
 import urllib
 from urllib import request as urllib2
-from urllib import parse as urlparse
+from urllib.parse import urlparse
 from tempfile import NamedTemporaryFile
 from .util import flip_y
 
