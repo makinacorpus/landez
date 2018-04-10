@@ -6,7 +6,7 @@ import json
 import mimetypes
 import uuid
 
-from io import StringIO
+from io import BytesIO
 
 from mbutil import disk_to_mbtiles
 
@@ -222,11 +222,11 @@ class TilesManager(object):
         """
         Tile binary content as PIL Image.
         """
-        image = Image.open(StringIO(data))
+        image = Image.open(BytesIO(data))
         return image.convert('RGBA')
 
     def _image_tile(self, image):
-        out = StringIO()
+        out = BytesIO()
         image.save(out, self._tile_extension[1:])
         return out.getvalue()
 
