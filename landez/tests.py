@@ -292,7 +292,7 @@ class TestLayers(unittest.TestCase):
 
 class TestFilters(unittest.TestCase):
     def test_cache_folder(self):
-        from filters import ColorToAlpha
+        from .filters import ColorToAlpha
         mb = TilesManager(tiles_url='http://server')
         self.assertEqual(mb.cache.folder, '/tmp/landez/server')
         mb.add_filter(ColorToAlpha('#ffffff'))
