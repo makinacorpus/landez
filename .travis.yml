@@ -11,7 +11,7 @@ before_install:
   - source venv/bin/activate
   - pip install -r requirements.txt
 install:
-  - python setup.py develop
+  - python3 setup.py develop
 before_script:
   - pip install nose
   - pip install coverage
