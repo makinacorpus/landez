@@ -1,6 +1,5 @@
 from math import pi, sin, log, exp, atan, tan, ceil
 from gettext import gettext as _
-
 from . import DEFAULT_TILE_SIZE
 
 DEG_TO_RAD = pi/180
