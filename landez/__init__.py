@@ -19,5 +19,5 @@ DOWNLOAD_RETRIES = 10
 """ Path to fonts for Mapnik rendering """
 TRUETYPE_FONTS_PATH = '/usr/share/fonts/truetype/'
 
-from tiles import *
-from sources import *
+from .tiles import *
+from .sources import *

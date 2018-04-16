@@ -27,7 +27,7 @@ setup(
     include_package_data=True,
     zip_safe=False,
     keywords=['MBTiles', 'Mapnik'],
-    classifiers=['Programming Language :: Python :: 2.6',
+    classifiers=['Programming Language :: Python :: 3.5',
                  'Natural Language :: English',
                  'Topic :: Utilities',
                  'Development Status :: 5 - Production/Stable'],
