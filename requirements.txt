@@ -1,2 +1,2 @@
 -e git://github.com/mapbox/mbutil.git@master#egg=mbutil
-Pillow == 1.7.7
+Pillow == 5.1.0
