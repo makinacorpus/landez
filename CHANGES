@@ -2,10 +2,10 @@
 CHANGELOG
 =========
 
-2.4.1.dev0
+3.0.0.dev0
 ==================
 
-*
+* Requires Python 3. Drop support of Python 2.
 
 
 2.4.0 (2017-03-02)

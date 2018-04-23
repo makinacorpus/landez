@@ -24,6 +24,8 @@ The land covered is specified using a list of bounding boxes and zoom levels.
 INSTALL
 =======
 
+Landez 3.0.0 requires python 3.
+
 *Landez* is pure python and has no external dependency. ::
 
     sudo easy_install landez
