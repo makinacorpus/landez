@@ -6,9 +6,7 @@ python:
 
 before_install:
   - deactivate
-  - sudo apt-get install -y python-software-properties
-  - sudo apt-get install libmapnik libmapnik-dev mapnik-utils python-mapnik
-  - sudo apt-get install mapnik-input-plugin-gdal mapnik-input-plugin-ogr mapnik-input-plugin-postgis mapnik-input-plugin-sqlite mapnik-input-plugin-osm
+  - sudo apt-get install libmapnik-dev mapnik-input-plugin-gdal mapnik-input-plugin-ogr mapnik-input-plugin-postgis mapnik-input-plugin-sqlite mapnik-input-plugin-osm
   - virtualenv --system-site-packages venv -p python3
   - source venv/bin/activate
   - pip install -r requirements.txt
