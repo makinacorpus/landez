@@ -287,7 +287,7 @@ class MapnikRenderer(TileSource):
         mapnik.render(self._mapnik, im)
         im.save(tmpfile.name, 'png256')  # TODO: mapnik output only to file?
         tmpfile.close()
-        content = open(tmpfile.name).read()
+        content = open(tmpfile.name, 'rb').read()
         os.unlink(tmpfile.name)
         return content
 

@@ -1,3 +1,5 @@
+dist: trusty
+sudo: required
 language: python
 python:
   - 3.5
@@ -5,10 +7,6 @@ python:
 before_install:
   - deactivate
   - sudo apt-get install -y python-software-properties
-  - sudo add-apt-repository ppa:mapnik/nightly-trunk
-  - sudo apt-get update
-  - sudo add-apt-repository ppa:mapnik/nightly-trunk
-  - sudo apt-get update
   - sudo apt-get install libmapnik libmapnik-dev mapnik-utils python-mapnik
   - sudo apt-get install mapnik-input-plugin-gdal mapnik-input-plugin-ogr mapnik-input-plugin-postgis
   mapnik-input-plugin-sqlite mapnik-input-plugin-osm
