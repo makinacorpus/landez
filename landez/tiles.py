@@ -331,7 +331,7 @@ class MBTilesBuilder(TilesManager):
         logger.debug(_("%s tiles were missing.") % self.rendered)
 
         # Some metadata
-        middlezoom = self.zoomlevels[int(len(self.zoomlevels)/2)]
+        middlezoom = self.zoomlevels[len(self.zoomlevels) // 2]
         lat = self.bounds[1] + (self.bounds[3] - self.bounds[1])/2
         lon = self.bounds[0] + (self.bounds[2] - self.bounds[0])/2
         metadata = {}
