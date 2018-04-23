@@ -1,3 +1,2 @@
 git+https://github.com/mapbox/mbutil.git@master#egg=mbutil
-git+https://github.com/mapnik/python-mapnik.git@v3.0.16#egg=mapnik
 Pillow == 5.1.0
