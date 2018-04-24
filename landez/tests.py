@@ -103,15 +103,15 @@ class TestMBTilesBuilder(unittest.TestCase):
     def tearDown(self):
         try:
             shutil.rmtree(self.temp_cache)
-        except FileNotFoundError:
+        except OSError:
             pass
         try:
             shutil.rmtree(self.temp_dir)
-        except FileNotFoundError:
+        except OSError:
             pass
         try:
             os.remove('tiles.mbtiles')
-        except FileNotFoundError:
+        except OSError:
             pass
 
     def test_init(self):
