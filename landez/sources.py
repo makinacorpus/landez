@@ -6,8 +6,13 @@ import logging
 import json
 from gettext import gettext as _
 from pkg_resources import parse_version
-import urllib.request
-from urllib.parse import urlparse
+try:
+    from urllib.parse import urlparse, urlencode
+    from urllib.request import urlopen, Request
+except ImportError:
+    from urlparse import urlparse
+    from urllib import urlencode
+    from urllib2 import urlopen, Request
 from tempfile import NamedTemporaryFile
 from .util import flip_y
 
@@ -172,10 +177,10 @@ class TileDownloader(TileSource):
         sleeptime = 1
         while r > 0:
             try:
-                request = urllib.request.Request(url)
+                request = Request(url)
                 for header, value in self.headers.items():
                     request.add_header(header, value)
-                stream = urllib.request.urlopen(request)
+                stream = urlopen(request)
                 print(stream.getcode())
                 assert stream.getcode() == 200
                 return stream.read()
@@ -221,15 +226,15 @@ class WMSReader(TileSource):
         bbox = proj.project(bbox[:2]) + proj.project(bbox[2:])
         bbox = ','.join(map(str, bbox))
         # Build WMS request URL
-        encodedparams = urllib.urlencode(self.wmsParams)
+        encodedparams = urlencode(self.wmsParams)
         url = "%s?%s" % (self.url, encodedparams)
         url += "&bbox=%s" % bbox   # commas are not encoded
         try:
             logger.debug(_("Download '%s'") % url)
-            request = urllib2.Request(url)
+            request = Request(url)
             for header, value in self.headers.items():
                 request.add_header(header, value)
-            f = urllib2.urlopen(request)
+            f = urlopen(request)
             header = f.info().typeheader
             assert header == self.wmsParams['format'], "Invalid WMS response type : %s" % header
             return f.read()
