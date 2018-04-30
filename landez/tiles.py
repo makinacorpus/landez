@@ -6,7 +6,7 @@ import json
 import mimetypes
 import uuid
 
-from io import BytesIO
+from io import BytesIO, StringIO
 
 from mbutil import disk_to_mbtiles
 
@@ -226,7 +226,7 @@ class TilesManager(object):
         return image.convert('RGBA')
 
     def _image_tile(self, image):
-        out = BytesIO()
+        out = StringIO()
         image.save(out, self._tile_extension[1:])
         return out.getvalue()
 
@@ -331,7 +331,7 @@ class MBTilesBuilder(TilesManager):
         logger.debug(_("%s tiles were missing.") % self.rendered)
 
         # Some metadata
-        middlezoom = self.zoomlevels[int(len(self.zoomlevels)/2)]
+        middlezoom = self.zoomlevels[len(self.zoomlevels) // 2]
         lat = self.bounds[1] + (self.bounds[3] - self.bounds[1])/2
         lon = self.bounds[0] + (self.bounds[2] - self.bounds[0])/2
         metadata = {}

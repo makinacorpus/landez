@@ -1,2 +1,2 @@
--e git://github.com/mapbox/mbutil.git@master#egg=mbutil
+git+https://github.com/mapbox/mbutil.git@master#egg=mbutil
 Pillow == 5.1.0

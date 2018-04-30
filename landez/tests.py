@@ -23,21 +23,11 @@ class TestTilesManager(unittest.TestCase):
                           wms_options={'format': 'image/jpeg'})
 
         self.assertEqual(mb.tile_format, 'image/jpeg')
-        if mb.cache.extension == '.jpeg':
-            self.assertEqual(mb.cache.extension, '.jpeg')
-        elif mb.cache.extension == '.jpg':
-            self.assertEqual(mb.cache.extension, '.jpg')
-        else:
-            self.assertEqual(mb.cache.extension, '.jpeg')
+        self.assertEqual(mb.cache.extension, '.jpeg')
         # Format from URL extension
         mb = TilesManager(tiles_url='http://tileserver/{z}/{x}/{y}.jpg')
         self.assertEqual(mb.tile_format, 'image/jpeg')
-        if mb.cache.extension == '.jpeg':
-            self.assertEqual(mb.cache.extension, '.jpeg')
-        elif mb.cache.extension == '.jpg':
-            self.assertEqual(mb.cache.extension, '.jpg')
-        else:
-            self.assertEqual(mb.cache.extension, '.jpeg')
+        self.assertEqual(mb.cache.extension, '.jpeg')
         mb = TilesManager(tiles_url='http://tileserver/{z}/{x}/{y}.png')
         self.assertEqual(mb.tile_format, 'image/png')
         self.assertEqual(mb.cache.extension, '.png')
@@ -113,8 +103,14 @@ class TestMBTilesBuilder(unittest.TestCase):
     def tearDown(self):
         try:
             shutil.rmtree(self.temp_cache)
+        except OSError:
+            pass
+        try:
             shutil.rmtree(self.temp_dir)
-            os.remove('foo.mbtiles')
+        except OSError:
+            pass
+        try:
+            os.remove('tiles.mbtiles')
         except OSError:
             pass
 
@@ -155,7 +151,7 @@ class TestMBTilesBuilder(unittest.TestCase):
     def test_run_jpeg(self):
         output = 'mq.mbtiles'
         mb = MBTilesBuilder(filepath=output,
-                            tiles_url='http://oatile1.mqcdn.com/tiles/1.0.0/sat/{z}/{x}/{y}.jpg')
+                            tiles_url='https://proxy-ign.openstreetmap.fr/94GjiyqD/bdortho/{z}/{x}/{y}.jpg')
         mb.add_coverage(bbox=(1.3, 43.5, 1.6, 43.7), zoomlevels=[10])
         mb.run(force=True)
         self.assertEqual(mb.nbtiles, 4)

@@ -1,18 +1,15 @@
+dist: precise
+sudo: required
 language: python
 python:
-  - 3.5
+  - 2.7
 
 before_install:
   - deactivate
-  - sudo apt-get install -y python-software-properties
-  - sudo add-apt-repository ppa:mapnik/nightly-trunk
-  - sudo apt-get update
-  - sudo add-apt-repository ppa:mapnik/nightly-trunk
-  - sudo apt-get update
-  - sudo apt-get install libmapnik libmapnik-dev mapnik-utils python-mapnik
-  - sudo apt-get install mapnik-input-plugin-gdal mapnik-input-plugin-ogr mapnik-input-plugin-postgis
-  mapnik-input-plugin-sqlite mapnik-input-plugin-osm
-  - virtualenv --system-site-packages venv -p python3
+  - sudo apt-add-repository --yes ppa:mapnik/v2.2.0
+  - sudo apt-get update -qq
+  - sudo apt-get install -y libmapnik mapnik-utils python-mapnik
+  - virtualenv --system-site-packages venv
   - source venv/bin/activate
   - pip install -r requirements.txt
 install:
