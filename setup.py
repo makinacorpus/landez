@@ -13,8 +13,8 @@ setup(
     url='https://github.com/makinacorpus/landez/',
     download_url="http://pypi.python.org/pypi/landez/",
     description="Landez is a python toolbox to manipulate map tiles.",
-    long_description=open(os.path.join(here, 'README.rst')).read() + '\n\n' +
-                     open(os.path.join(here, 'CHANGES')).read(),
+    long_description=open(os.path.join(here, 'README.rst'), encoding='utf-8').read() + '\n\n' +
+                     open(os.path.join(here, 'CHANGES'), encoding='utf-8').read(),
     license='LPGL, see LICENSE file.',
     install_requires = [
         'mbutil',
