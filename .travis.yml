@@ -6,12 +6,11 @@ python:
 
 before_install:
   - deactivate
-  - sudo apt-add-repository --yes ppa:mapnik/v2.2.0
-  - sudo apt-get update -qq
-  - sudo apt-get install -y libmapnik mapnik-utils python-mapnik
-  - virtualenv -p python3 --system-site-packages venv
+  - sudo apt-get install -y python-software-properties
+  - virtualenv --system-site-packages venv -p python3
   - source venv/bin/activate
   - pip install -r requirements.txt
+  - sudo apt-get install python3-mapnik
 install:
   - python setup.py develop
 before_script:
