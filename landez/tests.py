@@ -157,7 +157,7 @@ class TestMBTilesBuilder(unittest.TestCase):
         self.assertEqual(mb.nbtiles, 4)
         # Check result
         reader = MBTilesReader(output)
-        self.assertIn(reader.metadata().get('format'),  ('.jpeg', '.jpg'))
+        self.assertIn(reader.metadata().get('format'),  ('jpeg', 'jpg'))
         os.remove(output)
 
     def test_clean_gather(self):
