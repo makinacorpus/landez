@@ -19,6 +19,7 @@ before_install:
     sudo apt-get update -qq;
     sudo apt-get install -y mapnik-utils python-mapnik;
     fi
+  - python --version
 install:
   - python setup.py develop
 before_script:
