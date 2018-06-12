@@ -115,7 +115,7 @@ class TilesManager(object):
         # Tile files extensions
         self._tile_extension = mimetypes.guess_extension(self.tile_format, strict=False)
         assert self._tile_extension, _("Unknown format %s") % self.tile_format
-        if self._tile_extension == '.jpg':
+        if self._tile_extension in ('.jpe', '.jpg'):
             self._tile_extension = '.jpeg'
 
         # Cache

@@ -23,7 +23,7 @@ class TestTilesManager(unittest.TestCase):
                           wms_options={'format': 'image/jpeg'})
 
         self.assertEqual(mb.tile_format, 'image/jpeg')
-        self.assertIn(mb.cache.extension, ('.jpeg', '.jpg'))
+        self.assertTrue(mb.cache.extension, '.jpeg')
         # Format from URL extension
         mb = TilesManager(tiles_url='http://tileserver/{z}/{x}/{y}.jpg')
         self.assertEqual(mb.tile_format, 'image/jpeg')
