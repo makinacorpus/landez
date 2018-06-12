@@ -8,7 +8,8 @@ python:
 before_install:
   - deactivate
   - sudo apt-get install -y python-software-properties
-  - virtualenv --system-site-packages venv
+  - if [[ $TRAVIS_PYTHON_VERSION == 3.5 ]]; then virtualenv --system-site-packages venv -p python3; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then virtualenv --system-site-packages venv; fi
   - source venv/bin/activate
   - pip install -r requirements.txt
   - if [[ $TRAVIS_PYTHON_VERSION == 3.5 ]]; then
