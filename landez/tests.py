@@ -249,6 +249,15 @@ class TestCache(unittest.TestCase):
         c.basename = 'bar'
         self.assertEqual(c.folder, '/tmp/bar')
 
+    def test_remove(self):
+        mb = TilesManager()
+        mb.cache.save(b'toto', (1, 1, 1))
+        self.assertTrue(os.path.exists('/tmp/landez/stileopenstreetmaporg_z_x_ypng/1/1/0.png'))
+        mb.cache.remove((1, 1, 1))
+        self.assertFalse(os.path.exists('/tmp/landez/stileopenstreetmaporg_z_x_ypng/1/1/0.png'))
+        mb.cache.clean()
+        self.assertFalse(os.path.exists(mb.cache.folder))
+
     def test_clean(self):
         mb = TilesManager()
         self.assertEqual(mb.cache.folder, self.temp_path)
