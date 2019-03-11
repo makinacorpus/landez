@@ -168,15 +168,15 @@ class TileDownloader(TileSource):
             raise DownloadError(_("Unknown keyword %s in URL") % e)
 
         logger.debug(_("Retrieve tile at %s") % url)
-
-        request = urllib2.Request(url)
-        for header, value in self.headers.items():
-            request.add_header(header, value)
-        stream = urllib2.urlopen(request)
-        if stream.getcode() != 200:
-            logger.debug(_("Download error"))
+        try:
+            request = urllib2.Request(url)
+            for header, value in self.headers.items():
+                request.add_header(header, value)
+            stream = urllib2.urlopen(request)
+            assert stream.getcode() == 200
+            return stream.read()
+        except (AssertionError, IOError), e:
             raise DownloadError(_("Cannot download URL %s") % url)
-        return stream.read()
 
 
 class WMSReader(TileSource):
