@@ -175,7 +175,7 @@ class TileDownloader(TileSource):
         stream = urllib2.urlopen(request)
         if stream.getcode() != 404:
             logger.debug(_("Download error"))
-            return bytes()
+            raise DownloadError(_("Cannot download URL %s") % url)
         return stream.read()
 
 
