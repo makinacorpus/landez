@@ -173,7 +173,7 @@ class TileDownloader(TileSource):
         for header, value in self.headers.items():
             request.add_header(header, value)
         stream = urllib2.urlopen(request)
-        if stream.getcode() != 404:
+        if stream.getcode() != 200:
             logger.debug(_("Download error"))
             raise DownloadError(_("Cannot download URL %s") % url)
         return stream.read()
