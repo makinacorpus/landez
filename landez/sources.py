@@ -1,4 +1,5 @@
 import os
+import time
 import zlib
 import sqlite3
 import logging
@@ -20,7 +21,7 @@ except ImportError:
     pass
 
 
-from . import DEFAULT_TILE_FORMAT, DEFAULT_TILE_SIZE, DEFAULT_TILE_SCHEME
+from . import DEFAULT_TILE_FORMAT, DEFAULT_TILE_SIZE, DEFAULT_TILE_SCHEME, DOWNLOAD_RETRIES
 from proj import GoogleProjection
 
 
@@ -168,12 +169,23 @@ class TileDownloader(TileSource):
             raise DownloadError(_("Unknown keyword %s in URL") % e)
 
         logger.debug(_("Retrieve tile at %s") % url)
-        try:
-            request = requests.get(url, headers=self.headers)
-            assert request.status_code == 200
-        except (requests.exceptions.ConnectionError, AssertionError):
-            raise DownloadError(_("Cannot download URL %s") % url)
-        return request.content
+        r = DOWNLOAD_RETRIES
+        sleeptime = 1
+        while r > 0:
+            try:
+                request = requests.get(url, headers=self.headers)
+                if request.status_code == 404:
+                    raise DownloadError(_("%s does not exist") % url)
+                assert request.status_code == 200
+            except (requests.exceptions.ConnectionError, AssertionError) as e:
+                logger.debug(_("Download error, retry (%s left). (%s)") % (r, e))
+                r -= 1
+                time.sleep(sleeptime)
+                # progressivly sleep longer to wait for this tile
+                if (sleeptime <= 10) and (r % 2 == 0):
+                    sleeptime += 1  # increase wait
+                raise DownloadError(_("Cannot download URL %s") % url)
+            return request.content
 
 
 class WMSReader(TileSource):
