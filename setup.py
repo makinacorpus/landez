@@ -18,6 +18,7 @@ setup(
     license='LPGL, see LICENSE file.',
     install_requires = [
         'mbutil',
+        'requests',
     ],
     extras_require = {
         'PIL':  ["Pillow"],
