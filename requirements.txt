@@ -1,2 +1,4 @@
 -e git://github.com/mapbox/mbutil.git@master#egg=mbutil
 Pillow == 1.7.7
+requests == 2.21.0
+mock == 0.7.2
