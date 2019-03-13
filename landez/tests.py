@@ -1,5 +1,6 @@
 import os
 import logging
+import mock
 import unittest
 import shutil
 import tempfile
@@ -134,6 +135,8 @@ class TestMBTilesBuilder(unittest.TestCase):
         os.remove('big.mbtiles')
 
     def test_run_with_errors(self):
+        if os.path.exists('tiles.mbtiles'):
+            os.remove('tiles.mbtiles')
         mb = MBTilesBuilder(tiles_url='http://foo.bar')
         mb.add_coverage(bbox=(-180.0, -90.0, 180.0, 90.0), zoomlevels=[0, 1])
         self.assertRaises(DownloadError, mb.run)
@@ -141,7 +144,10 @@ class TestMBTilesBuilder(unittest.TestCase):
         mb.add_coverage(bbox=(-180.0, -90.0, 180.0, 90.0), zoomlevels=[0, 1])
         mb.run()
 
-    def test_run_jpeg(self):
+    @mock.patch('requests.get')
+    def test_run_jpeg(self, mock_get):
+        mock_get.return_value.content = 'jpeg'
+        mock_get.return_value.status_code = 200
         output = 'mq.mbtiles'
         mb = MBTilesBuilder(filepath=output,
                             tiles_url='http://oatile1.mqcdn.com/tiles/1.0.0/sat/{z}/{x}/{y}.jpg')

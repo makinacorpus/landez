@@ -7,7 +7,7 @@ import json
 from gettext import gettext as _
 from pkg_resources import parse_version
 import urllib
-import urllib2
+import requests
 from urlparse import urlparse
 from tempfile import NamedTemporaryFile
 from util import flip_y
@@ -173,13 +173,11 @@ class TileDownloader(TileSource):
         sleeptime = 1
         while r > 0:
             try:
-                request = urllib2.Request(url)
-                for header, value in self.headers.items():
-                    request.add_header(header, value)
-                stream = urllib2.urlopen(request)
-                assert stream.getcode() == 200
-                return stream.read()
-            except (AssertionError, IOError), e:
+                request = requests.get(url, headers=self.headers)
+                if request.status_code == 200:
+                    return request.content
+                raise DownloadError(_("Status code : %s, url : %s") % (request.status_code, url))
+            except requests.exceptions.ConnectionError as e:
                 logger.debug(_("Download error, retry (%s left). (%s)") % (r, e))
                 r -= 1
                 time.sleep(sleeptime)
@@ -225,13 +223,9 @@ class WMSReader(TileSource):
         url += "&bbox=%s" % bbox   # commas are not encoded
         try:
             logger.debug(_("Download '%s'") % url)
-            request = urllib2.Request(url)
-            for header, value in self.headers.items():
-                request.add_header(header, value)
-            f = urllib2.urlopen(request)
-            header = f.info().typeheader
-            assert header == self.wmsParams['format'], "Invalid WMS response type : %s" % header
-            return f.read()
+            request = requests.get(url, headers=self.headers)
+            assert request.headers == self.wmsParams['format'], "Invalid WMS response type : %s" % self.headers
+            return request.content
         except (AssertionError, IOError):
             raise ExtractionError
 
