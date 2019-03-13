@@ -2,10 +2,10 @@
 CHANGELOG
 =========
 
-2.4.1.dev0
+2.4.1 (2019-03-13)
 ==================
 
-*
+* Do not try to get tiles again when tiles doesn't exist.
 
 
 2.4.0 (2017-03-02)
