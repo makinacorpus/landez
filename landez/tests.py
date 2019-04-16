@@ -7,11 +7,11 @@ import tempfile
 import json
 import sqlite3
 
-from tiles import (TilesManager, MBTilesBuilder, ImageExporter,
+from .tiles import (TilesManager, MBTilesBuilder, ImageExporter,
                    EmptyCoverageError, DownloadError)
-from proj import InvalidCoverageError
-from cache import Disk
-from sources import MBTilesReader
+from .proj import InvalidCoverageError
+from .cache import Disk
+from .sources import MBTilesReader
 
 
 class TestTilesManager(unittest.TestCase):
@@ -22,12 +22,13 @@ class TestTilesManager(unittest.TestCase):
         # Format from WMS options
         mb = TilesManager(wms_server='dumb', wms_layers=['dumber'],
                           wms_options={'format': 'image/jpeg'})
+
         self.assertEqual(mb.tile_format, 'image/jpeg')
-        self.assertEqual(mb.cache.extension, '.jpeg')
+        self.assertTrue(mb.cache.extension, '.jpeg')
         # Format from URL extension
         mb = TilesManager(tiles_url='http://tileserver/{z}/{x}/{y}.jpg')
         self.assertEqual(mb.tile_format, 'image/jpeg')
-        self.assertEqual(mb.cache.extension, '.jpeg')
+        self.assertTrue(mb.cache.extension, '.jpeg')
         mb = TilesManager(tiles_url='http://tileserver/{z}/{x}/{y}.png')
         self.assertEqual(mb.tile_format, 'image/png')
         self.assertEqual(mb.cache.extension, '.png')
@@ -103,8 +104,14 @@ class TestMBTilesBuilder(unittest.TestCase):
     def tearDown(self):
         try:
             shutil.rmtree(self.temp_cache)
+        except OSError:
+            pass
+        try:
             shutil.rmtree(self.temp_dir)
-            os.remove('foo.mbtiles')
+        except OSError:
+            pass
+        try:
+            os.remove('tiles.mbtiles')
         except OSError:
             pass
 
@@ -146,21 +153,22 @@ class TestMBTilesBuilder(unittest.TestCase):
 
     @mock.patch('requests.get')
     def test_run_jpeg(self, mock_get):
-        mock_get.return_value.content = 'jpeg'
+        mock_get.return_value.content = b'jpeg'
         mock_get.return_value.status_code = 200
         output = 'mq.mbtiles'
         mb = MBTilesBuilder(filepath=output,
-                            tiles_url='http://oatile1.mqcdn.com/tiles/1.0.0/sat/{z}/{x}/{y}.jpg')
+                            tiles_url='https://proxy-ign.openstreetmap.fr/94GjiyqD/bdortho/{z}/{x}/{y}.jpg')
         mb.add_coverage(bbox=(1.3, 43.5, 1.6, 43.7), zoomlevels=[10])
         mb.run(force=True)
         self.assertEqual(mb.nbtiles, 4)
         # Check result
         reader = MBTilesReader(output)
-        self.assertEqual(reader.metadata().get('format'), 'jpeg')
+        self.assertTrue(reader.metadata().get('format'),  'jpeg')
         os.remove(output)
 
     def test_clean_gather(self):
         mb = MBTilesBuilder()
+        mb._clean_gather()
         self.assertEqual(mb.tmp_dir, self.temp_dir)
         self.assertFalse(os.path.exists(mb.tmp_dir))
         mb._gather((1, 1, 1))
@@ -247,6 +255,15 @@ class TestCache(unittest.TestCase):
         c.basename = 'bar'
         self.assertEqual(c.folder, '/tmp/bar')
 
+    def test_remove(self):
+        mb = TilesManager()
+        mb.cache.save(b'toto', (1, 1, 1))
+        self.assertTrue(os.path.exists('/tmp/landez/stileopenstreetmaporg_z_x_ypng/1/1/0.png'))
+        mb.cache.remove((1, 1, 1))
+        self.assertFalse(os.path.exists('/tmp/landez/stileopenstreetmaporg_z_x_ypng/1/1/0.png'))
+        mb.cache.clean()
+        self.assertFalse(os.path.exists(mb.cache.folder))
+
     def test_clean(self):
         mb = TilesManager()
         self.assertEqual(mb.cache.folder, self.temp_path)
@@ -298,7 +315,7 @@ class TestLayers(unittest.TestCase):
 
 class TestFilters(unittest.TestCase):
     def test_cache_folder(self):
-        from filters import ColorToAlpha
+        from .filters import ColorToAlpha
         mb = TilesManager(tiles_url='http://server')
         self.assertEqual(mb.cache.folder, '/tmp/landez/server')
         mb.add_filter(ColorToAlpha('#ffffff'))

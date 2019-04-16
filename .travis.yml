@@ -1,15 +1,26 @@
 dist: xenial
+sudo: required
 language: python
 python:
   - 2.7
+  - 3.5
 
 before_install:
   - deactivate
-  - sudo apt-get update -qq
-  - sudo apt-get install -y libmapnik-dev mapnik-utils python-mapnik
-  - virtualenv --system-site-packages venv
+  - sudo apt-get install -y python-software-properties
+  - if [[ $TRAVIS_PYTHON_VERSION == 3.5 ]]; then virtualenv --system-site-packages venv -p python3; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then virtualenv --system-site-packages venv; fi
   - source venv/bin/activate
   - pip install -r requirements.txt
+  - if [[ $TRAVIS_PYTHON_VERSION == 3.5 ]]; then
+    sudo apt-get install python3-mapnik;
+    fi
+  - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then
+    sudo apt-add-repository --yes ppa:mapnik/v2.2.0;
+    sudo apt-get update -qq;
+    sudo apt-get install -y mapnik-utils python-mapnik;
+    fi
+  - python --version
 install:
   - python setup.py develop
 before_script:

@@ -6,11 +6,16 @@ import logging
 import json
 from gettext import gettext as _
 from pkg_resources import parse_version
-import urllib
 import requests
-from urlparse import urlparse
+try:
+    from urllib.parse import urlparse, urlencode
+    from urllib.request import urlopen, Request
+except ImportError:
+    from urlparse import urlparse
+    from urllib import urlencode
+    from urllib2 import urlopen, Request
 from tempfile import NamedTemporaryFile
-from util import flip_y
+from .util import flip_y
 
 
 has_mapnik = False
@@ -22,7 +27,7 @@ except ImportError:
 
 
 from . import DEFAULT_TILE_FORMAT, DEFAULT_TILE_SIZE, DEFAULT_TILE_SCHEME, DOWNLOAD_RETRIES
-from proj import GoogleProjection
+from .proj import GoogleProjection
 
 
 logger = logging.getLogger(__name__)
@@ -75,7 +80,7 @@ class MBTilesReader(TileSource):
         logger.debug(_("Execute query '%s' %s") % (sql, args))
         try:
             self._cur.execute(sql, *args)
-        except (sqlite3.OperationalError, sqlite3.DatabaseError), e:
+        except (sqlite3.OperationalError, sqlite3.DatabaseError)as e:
             raise InvalidFormatError(_("%s while reading %s") % (e, self.filename))
         return self._cur
 
@@ -165,7 +170,7 @@ class TileDownloader(TileSource):
         s = self.tiles_subdomains[(x + y) % len(self.tiles_subdomains)];
         try:
             url = self.tiles_url.format(**locals())
-        except KeyError, e:
+        except KeyError as e:
             raise DownloadError(_("Unknown keyword %s in URL") % e)
 
         logger.debug(_("Retrieve tile at %s") % url)
@@ -218,7 +223,7 @@ class WMSReader(TileSource):
         bbox = proj.project(bbox[:2]) + proj.project(bbox[2:])
         bbox = ','.join(map(str, bbox))
         # Build WMS request URL
-        encodedparams = urllib.urlencode(self.wmsParams)
+        encodedparams = urlencode(self.wmsParams)
         url = "%s?%s" % (self.url, encodedparams)
         url += "&bbox=%s" % bbox   # commas are not encoded
         try:
@@ -280,7 +285,7 @@ class MapnikRenderer(TileSource):
         mapnik.render(self._mapnik, im)
         im.save(tmpfile.name, 'png256')  # TODO: mapnik output only to file?
         tmpfile.close()
-        content = open(tmpfile.name).read()
+        content = open(tmpfile.name, 'rb').read()
         os.unlink(tmpfile.name)
         return content
 
