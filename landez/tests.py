@@ -153,7 +153,7 @@ class TestMBTilesBuilder(unittest.TestCase):
 
     @mock.patch('requests.get')
     def test_run_jpeg(self, mock_get):
-        mock_get.return_value.content = 'jpeg'
+        mock_get.return_value.content = b'jpeg'
         mock_get.return_value.status_code = 200
         output = 'mq.mbtiles'
         mb = MBTilesBuilder(filepath=output,
