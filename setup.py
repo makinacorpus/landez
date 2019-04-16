@@ -7,7 +7,7 @@ here = os.path.abspath(os.path.dirname(__file__))
 
 setup(
     name='landez',
-    version='2.4.1.dev0',
+    version='2.4.2.dev0',
     author='Mathieu Leplatre',
     author_email='mathieu.leplatre@makina-corpus.com',
     url='https://github.com/makinacorpus/landez/',
@@ -18,6 +18,7 @@ setup(
     license='LPGL, see LICENSE file.',
     install_requires = [
         'mbutil',
+        'requests',
     ],
     extras_require = {
         'PIL':  ["Pillow"],
