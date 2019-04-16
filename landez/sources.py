@@ -6,7 +6,7 @@ import logging
 import json
 from gettext import gettext as _
 from pkg_resources import parse_version
-<<<<<<< HEAD
+import requests
 try:
     from urllib.parse import urlparse, urlencode
     from urllib.request import urlopen, Request
@@ -14,11 +14,6 @@ except ImportError:
     from urlparse import urlparse
     from urllib import urlencode
     from urllib2 import urlopen, Request
-=======
-import urllib
-import requests
-from urlparse import urlparse
->>>>>>> master
 from tempfile import NamedTemporaryFile
 from .util import flip_y
 
