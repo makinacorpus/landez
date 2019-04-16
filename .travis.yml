@@ -10,8 +10,6 @@ before_install:
   - if [[ $TRAVIS_PYTHON_VERSION == 3.5 ]]; then virtualenv --system-site-packages venv -p python3; fi
   - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then virtualenv --system-site-packages venv; fi
   - sudo apt-get update -qq
-  - sudo apt-get install -y libmapnik-dev mapnik-utils python-mapnik
-  - virtualenv --system-site-packages venv
   - source venv/bin/activate
   - pip install -r requirements.txt
   - if [[ $TRAVIS_PYTHON_VERSION == 3.5 ]]; then
