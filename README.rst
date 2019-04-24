@@ -7,10 +7,10 @@ For building MBTiles, Landez embeds *mbutil* from Mapbox https://github.com/mapb
 The land covered is specified using a list of bounding boxes and zoom levels.
 
 
-.. image:: https://pypip.in/v/landez/badge.png
+.. image:: https://img.shields.io/pypi/v/landez.svg
     :target: https://pypi.python.org/pypi/landez
 
-.. image:: https://pypip.in/d/landez/badge.png
+.. image:: https://img.shields.io/pypi/dm/landez.svg
     :target: https://pypi.python.org/pypi/landez
 
 .. image:: https://travis-ci.org/makinacorpus/landez.png
