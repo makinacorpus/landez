@@ -229,7 +229,7 @@ class WMSReader(TileSource):
         try:
             logger.debug(_("Download '%s'") % url)
             request = requests.get(url, headers=self.headers)
-            assert request.headers == self.wmsParams['format'], "Invalid WMS response type : %s" % self.headers
+            assert request.headers['Content-Type'] == self.wmsParams['format'], "Invalid WMS response type : %s" % request.headers['Content-Type']
             return request.content
         except (AssertionError, IOError):
             raise ExtractionError
