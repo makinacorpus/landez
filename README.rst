@@ -123,6 +123,18 @@ From a WMS server
     mb.add_coverage(bbox=([-0.9853,43.6435.1126,44.0639]))
     mb.run()
 
+Custom metadata params
+----------------------
+
+It is possible to specify some metadata parameters (name, description, version and type).
+::
+
+    mb = MBTilesBuilder(cache=False)
+    mb.add_coverage(bbox=(-180.0, -85.0, 180.0, 85.0),
+                    zoomlevels=[0, 1])
+    # valid type values: overlay or baselayer
+    meta = {"name":"EuropeRivers", "description": "Main rivers in Europe", "type": "overlay"}
+    mb.run(metadata=meta)
 
 
 Blend tiles together
