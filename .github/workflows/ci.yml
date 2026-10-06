@@ -6,6 +6,9 @@ on:
     branches:
       - main
       - master
+  release:
+    types:
+      - created
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
