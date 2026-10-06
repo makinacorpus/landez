@@ -2,7 +2,7 @@
 CHANGELOG
 =========
 
-2.5.1.dev0
+2.5.1 (2026-10-06)
 ==================
 
 * Make it work with latest versions of setuptools, mapnik, Pillow and python
