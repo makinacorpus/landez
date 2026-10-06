@@ -26,15 +26,15 @@ INSTALL
 
 *Landez* is pure python and has no external dependency. ::
 
-    sudo easy_install landez
+    pip install landez
 
 However, it requires `mapnik` if the tiles are rendered locally. ::
 
-    sudo aptitude install python-mapnik
+    pip install mapnik
 
 And `PIL` to blend tiles together or export arranged tiles into images. ::
 
-    sudo aptitude install python-imaging
+    pip install pillow
 
 =====
 USAGE
@@ -247,12 +247,11 @@ Cache tiles are stored using TMS scheme by default (with ``y`` value flipped). I
 Run tests
 =========
 
-Run tests with nosetests (if you are working in a virtualenv, don't forget to install nose in it!):
+Run tests with unittest:
 
 ::
     
-    cd landez
-    nosetests
+    python -m unittest discover -p "tests.py"
 
 The Mapnik stylesheet for the test about grid content comes from <https://github.com/springmeyer/gridsforkids>
 

@@ -5,7 +5,6 @@ import sqlite3
 import logging
 import json
 from gettext import gettext as _
-from pkg_resources import parse_version
 import requests
 try:
     from urllib.parse import urlparse, urlencode
@@ -16,6 +15,7 @@ except ImportError:
     from urllib2 import urlopen, Request
 from tempfile import NamedTemporaryFile
 from .util import flip_y
+
 
 
 has_mapnik = False
@@ -69,6 +69,12 @@ class MBTilesReader(TileSource):
         self.basename = os.path.basename(self.filename)
         self._con = None
         self._cur = None
+
+    def __del__(self):
+        if self._cur:
+            self._cur.close()
+        if self._con:
+            self._con.close()
 
     def _query(self, sql, *args):
         """ Executes the specified `sql` query and returns the cursor """
@@ -212,7 +218,7 @@ class WMSReader(TileSource):
         )
         self.wmsParams.update(**kwargs)
         projectionKey = 'srs'
-        if parse_version(self.wmsParams['version']) >= parse_version('1.3'):
+        if tuple(map(int, self.wmsParams['version'].split('.'))) >= (1, 3):
             projectionKey = 'crs'
         self.wmsParams[projectionKey] = GoogleProjection.NAME
 
@@ -262,8 +268,13 @@ class MapnikRenderer(TileSource):
 
         # Convert to map projection
         assert len(bbox) == 4, _("Provide a bounding box tuple (minx, miny, maxx, maxy)")
-        c0 = self._prj.forward(mapnik.Coord(bbox[0], bbox[1]))
-        c1 = self._prj.forward(mapnik.Coord(bbox[2], bbox[3]))
+        if hasattr(self._prj, 'forward'):
+            c0 = self._prj.forward(mapnik.Coord(bbox[0], bbox[1]))
+            c1 = self._prj.forward(mapnik.Coord(bbox[2], bbox[3]))
+        else:
+            tr = mapnik.ProjTransform(mapnik.Projection('epsg:4326'), self._prj)
+            c0 = tr.forward(mapnik.Coord(bbox[0], bbox[1]))
+            c1 = tr.forward(mapnik.Coord(bbox[2], bbox[3]))
 
         # Bounding box for the tile
         bbox = mapnik.Box2d(c0.x, c0.y, c1.x, c1.y)
@@ -285,7 +296,8 @@ class MapnikRenderer(TileSource):
         mapnik.render(self._mapnik, im)
         im.save(tmpfile.name, 'png256')  # TODO: mapnik output only to file?
         tmpfile.close()
-        content = open(tmpfile.name, 'rb').read()
+        with open(tmpfile.name, 'rb') as f:
+            content = f.read()
         os.unlink(tmpfile.name)
         return content
 

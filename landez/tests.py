@@ -1,11 +1,11 @@
 import os
 import logging
-import mock
 import unittest
 import shutil
 import tempfile
 import json
 import sqlite3
+from unittest import mock
 
 from .tiles import (TilesManager, MBTilesBuilder, ImageExporter,
                    EmptyCoverageError, DownloadError)
@@ -93,7 +93,7 @@ class TestTilesManager(unittest.TestCase):
         mb = TilesManager(tiles_subdomains=list("abcz"))
         self.assertRaises(DownloadError, mb.tile, (10, 1, 2))
         # Invalid URL
-        mb = TilesManager(tiles_url="http://{s}.osm.com")
+        mb = TilesManager(tiles_url="http://{s}.tile.openstreetmap.org/invalid/{z}/{x}/{y}.png")
         self.assertRaises(DownloadError, mb.tile, (10, 1, 2))
 
 
@@ -190,10 +190,12 @@ class TestMBTilesBuilder(unittest.TestCase):
         mb.run()
 
         mbtiles_path = os.path.join(os.getcwd(), 'foo.mbtiles')
-        mbtiles = sqlite3.connect(mbtiles_path).cursor()
+        conn = sqlite3.connect(mbtiles_path)
+        mbtiles = conn.cursor()
         grid = mbtiles.execute("SELECT grid FROM grids WHERE zoom_level=2 AND tile_column=1 AND tile_row=1")
         produced_data = json.loads(mb.grid((2, 1, 1)))['data']['39']['NAME']
         expected_data = 'Costa Rica'
+        conn.close()
         os.remove('foo.mbtiles')
         self.assertEqual(produced_data, expected_data)
 
@@ -225,8 +227,8 @@ class TestImageExporter(unittest.TestCase):
         output = "image.png"
         ie = ImageExporter()
         ie.export_image((-180.0, -90.0, 180.0, 90.0), 2, output)
-        i = Image.open(output)
-        self.assertEqual((1024, 1024), i.size)
+        with Image.open(output) as i:
+            self.assertEqual((1024, 1024), i.size)
         os.remove(output)
         # Test from other mbtiles
         mb = MBTilesBuilder(filepath='toulouse.mbtiles')
@@ -235,8 +237,8 @@ class TestImageExporter(unittest.TestCase):
         ie = ImageExporter(mbtiles_file=mb.filepath)
         ie.export_image((1.3, 43.5, 1.6, 43.7), 12, output)
         os.remove('toulouse.mbtiles')
-        i = Image.open(output)
-        self.assertEqual((1280, 1024), i.size)
+        with Image.open(output) as i:
+            self.assertEqual((1280, 1024), i.size)
         os.remove(output)
 
 

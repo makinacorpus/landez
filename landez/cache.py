@@ -107,7 +107,8 @@ class Disk(Cache):
         tile_abs_uri = self.tile_fullpath((z, x, y))
         if os.path.exists(tile_abs_uri):
             logger.debug(_("Found %s") % tile_abs_uri)
-            return open(tile_abs_uri, 'rb').read()
+            with open(tile_abs_uri, 'rb') as f:
+                return f.read()
         return None
 
     def save(self, body, z_x_y):
@@ -117,11 +118,12 @@ class Disk(Cache):
         if not os.path.isdir(tile_abs_dir):
             os.makedirs(tile_abs_dir)
         logger.debug(_("Save %s bytes to %s") % (len(body), tile_abs_uri))
-        open(tile_abs_uri, 'wb').write(body)
+        with open(tile_abs_uri, 'wb') as f:
+            f.write(body)
 
     def clean(self):
         logger.debug(_("Clean-up %s") % self.folder)
         try:
             shutil.rmtree(self.folder)
         except OSError:
-            logger.warn(_("%s was missing or read-only.") % self.folder)
+            logger.warning(_("%s was missing or read-only.") % self.folder)

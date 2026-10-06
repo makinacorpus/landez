@@ -1,3 +1,4 @@
+import gc
 import os
 import shutil
 import logging
@@ -8,7 +9,18 @@ import uuid
 
 from io import BytesIO, StringIO
 
+import mbutil.util
 from mbutil import disk_to_mbtiles
+
+_optimize_database = mbutil.util.optimize_database
+
+
+def _optimize_and_close_database(con, silent):
+    _optimize_database(con, silent)
+    con.close()
+
+
+mbutil.util.optimize_database = _optimize_and_close_database
 
 from . import (DEFAULT_TILES_URL, DEFAULT_TILES_SUBDOMAINS,
                DEFAULT_TMP_DIR, DEFAULT_FILEPATH, DEFAULT_TILE_SIZE,
@@ -205,7 +217,7 @@ class TilesManager(object):
                 # Prepare tile of overlay, if available
                 overlay = self._tile_image(layer.tile((z, x, y)))
             except (IOError, DownloadError, ExtractionError)as e:
-                logger.warn(e)
+                logger.warning(e)
                 continue
             # Extract alpha mask
             overlay = overlay.convert("RGBA")
@@ -285,7 +297,7 @@ class MBTilesBuilder(TilesManager):
         """
         if os.path.exists(self.filepath):
             if force:
-                logger.warn(_("%s already exists. Overwrite.") % self.filepath)
+                logger.warning(_("%s already exists. Overwrite.") % self.filepath)
                 os.remove(self.filepath)
             else:
                 # Already built, do not do anything.
@@ -324,7 +336,7 @@ class MBTilesBuilder(TilesManager):
             try:
                 self._gather((z, x, y))
             except Exception as e:
-                logger.warn(e)
+                logger.warning(e)
                 if not self.ignore_errors:
                     raise
 
@@ -362,6 +374,7 @@ class MBTilesBuilder(TilesManager):
             format=extension,
             scheme=self.cache.scheme
         )
+        gc.collect()
 
         try:
             os.remove("%s-journal" % self.filepath)  # created by mbutil
