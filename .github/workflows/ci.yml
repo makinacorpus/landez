@@ -7,6 +7,10 @@ on:
       - main
       - master
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -19,8 +23,8 @@ jobs:
 
       - name: Install system dependencies
         run: |
-          sudo apt update -qq
-          sudo apt install -y mapnik-utils
+          sudo apt-get update -qq
+          sudo apt-get install -y mapnik-utils
 
       - name: Set up Python
         uses: actions/setup-python@v7
