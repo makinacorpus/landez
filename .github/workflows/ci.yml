@@ -38,4 +38,12 @@ jobs:
 
       - name: Run tests
         run: |
-          nosetests --with-coverage --cover-package=landez
+          coverage run --source=landez -m unittest discover -p "tests.py"
+          coverage report -m
+          coverage xml -o coverage.xml
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v7
+        with:
+          files: ./coverage.xml
+          token: ${{ secrets.CODECOV_TOKEN }}

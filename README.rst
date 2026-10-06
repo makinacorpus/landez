@@ -247,12 +247,11 @@ Cache tiles are stored using TMS scheme by default (with ``y`` value flipped). I
 Run tests
 =========
 
-Run tests with nosetests (if you are working in a virtualenv, don't forget to install nose in it!):
+Run tests with unittest:
 
 ::
     
-    cd landez
-    nosetests
+    python -m unittest discover -p "tests.py"
 
 The Mapnik stylesheet for the test about grid content comes from <https://github.com/springmeyer/gridsforkids>
 

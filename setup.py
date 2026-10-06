@@ -23,7 +23,7 @@ setup(
     extras_require = {
         'PIL':  ["Pillow"],
         'Mapnik': ["Mapnik >= 2.0.0"],
-        'dev': ['nose', 'coverage']
+        'dev': ['coverage']
     },
     packages=find_packages(),
     include_package_data=True,
