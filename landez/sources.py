@@ -5,7 +5,6 @@ import sqlite3
 import logging
 import json
 from gettext import gettext as _
-from pkg_resources import parse_version
 import requests
 try:
     from urllib.parse import urlparse, urlencode
