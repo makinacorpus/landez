@@ -266,8 +266,9 @@ class MapnikRenderer(TileSource):
             c0 = self._prj.forward(mapnik.Coord(bbox[0], bbox[1]))
             c1 = self._prj.forward(mapnik.Coord(bbox[2], bbox[3]))
         else:
-            c0 = mapnik.forward_(mapnik.Coord(bbox[0], bbox[1]), self._prj)
-            c1 = mapnik.forward_(mapnik.Coord(bbox[2], bbox[3]), self._prj)
+            tr = mapnik.ProjTransform(mapnik.Projection('epsg:4326'), self._prj)
+            c0 = tr.forward(mapnik.Coord(bbox[0], bbox[1]))
+            c1 = tr.forward(mapnik.Coord(bbox[2], bbox[3]))
 
         # Bounding box for the tile
         bbox = mapnik.Box2d(c0.x, c0.y, c1.x, c1.y)
