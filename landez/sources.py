@@ -18,6 +18,7 @@ from tempfile import NamedTemporaryFile
 from .util import flip_y
 
 
+
 has_mapnik = False
 try:
     import mapnik
@@ -212,7 +213,7 @@ class WMSReader(TileSource):
         )
         self.wmsParams.update(**kwargs)
         projectionKey = 'srs'
-        if parse_version(self.wmsParams['version']) >= parse_version('1.3'):
+        if tuple(map(int, self.wmsParams['version'].split('.'))) >= (1, 3):
             projectionKey = 'crs'
         self.wmsParams[projectionKey] = GoogleProjection.NAME
 
