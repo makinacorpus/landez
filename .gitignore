@@ -15,3 +15,5 @@
 /landez.egg-info/
 .idea/
 *.mbtiles
+/.coverage
+coverage.xml

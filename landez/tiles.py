@@ -205,7 +205,7 @@ class TilesManager(object):
                 # Prepare tile of overlay, if available
                 overlay = self._tile_image(layer.tile((z, x, y)))
             except (IOError, DownloadError, ExtractionError)as e:
-                logger.warn(e)
+                logger.warning(e)
                 continue
             # Extract alpha mask
             overlay = overlay.convert("RGBA")
@@ -285,7 +285,7 @@ class MBTilesBuilder(TilesManager):
         """
         if os.path.exists(self.filepath):
             if force:
-                logger.warn(_("%s already exists. Overwrite.") % self.filepath)
+                logger.warning(_("%s already exists. Overwrite.") % self.filepath)
                 os.remove(self.filepath)
             else:
                 # Already built, do not do anything.
@@ -324,7 +324,7 @@ class MBTilesBuilder(TilesManager):
             try:
                 self._gather((z, x, y))
             except Exception as e:
-                logger.warn(e)
+                logger.warning(e)
                 if not self.ignore_errors:
                     raise
 

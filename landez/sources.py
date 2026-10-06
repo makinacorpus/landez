@@ -262,8 +262,12 @@ class MapnikRenderer(TileSource):
 
         # Convert to map projection
         assert len(bbox) == 4, _("Provide a bounding box tuple (minx, miny, maxx, maxy)")
-        c0 = self._prj.forward(mapnik.Coord(bbox[0], bbox[1]))
-        c1 = self._prj.forward(mapnik.Coord(bbox[2], bbox[3]))
+        if hasattr(self._prj, 'forward'):
+            c0 = self._prj.forward(mapnik.Coord(bbox[0], bbox[1]))
+            c1 = self._prj.forward(mapnik.Coord(bbox[2], bbox[3]))
+        else:
+            c0 = mapnik.forward_(mapnik.Coord(bbox[0], bbox[1]), self._prj)
+            c1 = mapnik.forward_(mapnik.Coord(bbox[2], bbox[3]), self._prj)
 
         # Bounding box for the tile
         bbox = mapnik.Box2d(c0.x, c0.y, c1.x, c1.y)
@@ -285,7 +289,8 @@ class MapnikRenderer(TileSource):
         mapnik.render(self._mapnik, im)
         im.save(tmpfile.name, 'png256')  # TODO: mapnik output only to file?
         tmpfile.close()
-        content = open(tmpfile.name, 'rb').read()
+        with open(tmpfile.name, 'rb') as f:
+            content = f.read()
         os.unlink(tmpfile.name)
         return content
 
