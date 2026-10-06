@@ -1,11 +1,11 @@
 import os
 import logging
-import mock
 import unittest
 import shutil
 import tempfile
 import json
 import sqlite3
+from unittest import mock
 
 from .tiles import (TilesManager, MBTilesBuilder, ImageExporter,
                    EmptyCoverageError, DownloadError)

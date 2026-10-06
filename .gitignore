@@ -13,4 +13,5 @@
 /build/
 /dist/
 /landez.egg-info/
-
+.idea/
+*.mbtiles
