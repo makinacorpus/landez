@@ -26,15 +26,15 @@ INSTALL
 
 *Landez* is pure python and has no external dependency. ::
 
-    sudo easy_install landez
+    pip install landez
 
 However, it requires `mapnik` if the tiles are rendered locally. ::
 
-    sudo aptitude install python-mapnik
+    pip install mapnik
 
 And `PIL` to blend tiles together or export arranged tiles into images. ::
 
-    sudo aptitude install python-imaging
+    pip install pillow
 
 =====
 USAGE
