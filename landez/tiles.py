@@ -1,3 +1,4 @@
+import gc
 import os
 import shutil
 import logging
@@ -8,7 +9,18 @@ import uuid
 
 from io import BytesIO, StringIO
 
+import mbutil.util
 from mbutil import disk_to_mbtiles
+
+_optimize_database = mbutil.util.optimize_database
+
+
+def _optimize_and_close_database(con, silent):
+    _optimize_database(con, silent)
+    con.close()
+
+
+mbutil.util.optimize_database = _optimize_and_close_database
 
 from . import (DEFAULT_TILES_URL, DEFAULT_TILES_SUBDOMAINS,
                DEFAULT_TMP_DIR, DEFAULT_FILEPATH, DEFAULT_TILE_SIZE,
@@ -362,6 +374,7 @@ class MBTilesBuilder(TilesManager):
             format=extension,
             scheme=self.cache.scheme
         )
+        gc.collect()
 
         try:
             os.remove("%s-journal" % self.filepath)  # created by mbutil

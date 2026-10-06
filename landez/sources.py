@@ -70,6 +70,12 @@ class MBTilesReader(TileSource):
         self._con = None
         self._cur = None
 
+    def __del__(self):
+        if self._cur:
+            self._cur.close()
+        if self._con:
+            self._con.close()
+
     def _query(self, sql, *args):
         """ Executes the specified `sql` query and returns the cursor """
         if not self._con:
